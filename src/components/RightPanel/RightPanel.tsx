@@ -1,11 +1,13 @@
+// /src/components/RightPanel/RightPanel.tsx
+import type { FC } from "react";
 import { Container } from "./Styles/style";
 
-function RightPanel() {
+const RightPanel: FC = () => {
   return (
     <Container className="right-panel">
       {/* Right Panel Content */}
     </Container>
   );
-}
+};
 
 export default RightPanel;

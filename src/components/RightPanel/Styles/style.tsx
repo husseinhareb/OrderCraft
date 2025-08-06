@@ -1,3 +1,5 @@
+// /src/components/LeftPanel/Styles/style.tsx
+
 import { styled } from "styled-components";
 
 export const Container =styled.div`
