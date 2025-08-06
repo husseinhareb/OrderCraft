@@ -1,0 +1,99 @@
+// /src/components/RightPanel/OrderForm.tsx
+import { useState, type FC, type FormEvent } from "react";
+import { Drawer, DrawerBody, DrawerFooter, DrawerHeader, Field, Label, Input, Textarea, Select, Button } from "./Styles/style";
+import { useUIStore } from "../../store/store";
+
+const OrderForm: FC = () => {
+  const isOpen = useUIStore((s) => s.isOrderFormOpen);
+  const close = useUIStore((s) => s.closeOrderForm);
+
+  const [clientName, setClientName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [city, setCity] = useState("");
+  const [address, setAddress] = useState("");
+  const [deliveryCompany, setDeliveryCompany] = useState("");
+  const [deliveryDate, setDeliveryDate] = useState("");
+  const [description, setDescription] = useState("");
+
+  const handleSubmit = (e: FormEvent) => {
+    e.preventDefault();
+    const order = {
+      clientName,
+      phone,
+      city,
+      address,
+      deliveryCompany,
+      deliveryDate,
+      description,
+    };
+    // TODO: send `order` to your API/store
+    console.log("Order saved:", order);
+    close();
+  };
+
+  return (
+    <Drawer $open={isOpen} aria-hidden={!isOpen} aria-label="Create order">
+      <form onSubmit={handleSubmit}>
+        <DrawerHeader>
+          <h3>Create Order</h3>
+          <Button type="button" onClick={close} variant="ghost" aria-label="Close">✕</Button>
+        </DrawerHeader>
+
+        <DrawerBody>
+          <Field>
+            <Label htmlFor="clientName">Client name</Label>
+            <Input id="clientName" value={clientName} onChange={(e) => setClientName(e.target.value)} required />
+          </Field>
+
+          <Field>
+            <Label htmlFor="phone">Phone number</Label>
+            <Input id="phone" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} required />
+          </Field>
+
+          <Field>
+            <Label htmlFor="city">City</Label>
+            <Input id="city" value={city} onChange={(e) => setCity(e.target.value)} required />
+          </Field>
+
+          <Field>
+            <Label htmlFor="address">Address</Label>
+            <Input id="address" value={address} onChange={(e) => setAddress(e.target.value)} required />
+          </Field>
+
+          <Field>
+            <Label htmlFor="deliveryCompany">Delivery company</Label>
+            <Select
+              id="deliveryCompany"
+              value={deliveryCompany}
+              onChange={(e) => setDeliveryCompany(e.target.value)}
+              required
+            >
+              <option value="" disabled>Select…</option>
+              <option value="DHL">DHL</option>
+              <option value="FedEx">FedEx</option>
+              <option value="UPS">UPS</option>
+              <option value="Local Post">Local Post</option>
+            </Select>
+          </Field>
+
+          <Field>
+            <Label htmlFor="deliveryDate">Delivery date</Label>
+            <Input id="deliveryDate" type="date" value={deliveryDate} onChange={(e) => setDeliveryDate(e.target.value)} required />
+          </Field>
+
+          <Field>
+            <Label htmlFor="description">Order description</Label>
+            <Textarea id="description" rows={4} value={description} onChange={(e) => setDescription(e.target.value)} />
+          </Field>
+        </DrawerBody>
+
+        <DrawerFooter>
+          <Button type="button" variant="ghost" onClick={close}>Cancel</Button>
+          <Button type="submit">Save order</Button>
+        </DrawerFooter>
+      </form>
+    </Drawer>
+  );
+};
+
+export default OrderForm;
