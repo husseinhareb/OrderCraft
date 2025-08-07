@@ -2,6 +2,17 @@
 import { useState, type FC, type FormEvent } from "react";
 import { Drawer, DrawerBody, DrawerFooter, DrawerHeader, Field, Label, Input, Textarea, Select, Button } from "./Styles/style";
 import { useUIStore } from "../../store/store";
+import { invoke } from "@tauri-apps/api/core";
+
+type OrderInput = {
+  clientName: string;
+  phone: string;
+  city: string;
+  address: string;
+  deliveryCompany: string;
+  deliveryDate: string; // yyyy-mm-dd
+  description?: string;
+};
 
 const OrderForm: FC = () => {
   const isOpen = useUIStore((s) => s.isOrderFormOpen);
@@ -14,21 +25,43 @@ const OrderForm: FC = () => {
   const [deliveryCompany, setDeliveryCompany] = useState("");
   const [deliveryDate, setDeliveryDate] = useState("");
   const [description, setDescription] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleSubmit = (e: FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    const order = {
+    setSaving(true);
+    setError(null);
+
+    const order: OrderInput = {
       clientName,
       phone,
       city,
       address,
       deliveryCompany,
       deliveryDate,
-      description,
+      description: description || undefined,
     };
-    // TODO: send `order` to your API/store
-    console.log("Order saved:", order);
-    close();
+
+    try {
+      // Calls the Rust command `save_order` with the payload { order: {...} }
+      const id = await invoke<number>("save_order", { order });
+      console.log("Order saved with id:", id);
+
+      // Reset + close
+      setClientName("");
+      setPhone("");
+      setCity("");
+      setAddress("");
+      setDeliveryCompany("");
+      setDeliveryDate("");
+      setDescription("");
+      close();
+    } catch (err: any) {
+      setError(err?.toString() ?? "Failed to save order");
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -40,6 +73,8 @@ const OrderForm: FC = () => {
         </DrawerHeader>
 
         <DrawerBody>
+          {error && <div role="alert" style={{ color: "red" }}>{error}</div>}
+
           <Field>
             <Label htmlFor="clientName">Client name</Label>
             <Input id="clientName" value={clientName} onChange={(e) => setClientName(e.target.value)} required />
@@ -62,12 +97,7 @@ const OrderForm: FC = () => {
 
           <Field>
             <Label htmlFor="deliveryCompany">Delivery company</Label>
-            <Select
-              id="deliveryCompany"
-              value={deliveryCompany}
-              onChange={(e) => setDeliveryCompany(e.target.value)}
-              required
-            >
+            <Select id="deliveryCompany" value={deliveryCompany} onChange={(e) => setDeliveryCompany(e.target.value)} required>
               <option value="" disabled>Select…</option>
               <option value="DHL">DHL</option>
               <option value="FedEx">FedEx</option>
@@ -88,8 +118,8 @@ const OrderForm: FC = () => {
         </DrawerBody>
 
         <DrawerFooter>
-          <Button type="button" variant="ghost" onClick={close}>Cancel</Button>
-          <Button type="submit">Save order</Button>
+          <Button type="button" variant="ghost" onClick={close} disabled={saving}>Cancel</Button>
+          <Button type="submit" disabled={saving}>{saving ? "Saving…" : "Save order"}</Button>
         </DrawerFooter>
       </form>
     </Drawer>
