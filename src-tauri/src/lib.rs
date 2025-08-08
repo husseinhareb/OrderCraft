@@ -1,3 +1,4 @@
+// src/lib.rs
 mod app_state;
 mod db;
 mod util;
@@ -59,6 +60,7 @@ pub fn run() {
             // theme
             commands::theme::get_theme_colors,
             commands::theme::save_theme_colors,
+            commands::theme::get_confetti_palette,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

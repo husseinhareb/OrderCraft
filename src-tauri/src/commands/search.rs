@@ -1,3 +1,4 @@
+// src/commands/search.rs
 use crate::app_state::AppState;
 use crate::db::{ensure_schema, open_db};
 use crate::util::escape_like;

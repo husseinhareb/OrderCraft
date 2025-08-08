@@ -1,3 +1,4 @@
+// src/commands/mod.rs
 pub mod orders;
 pub mod opened_orders;
 pub mod search;

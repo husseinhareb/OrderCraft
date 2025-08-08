@@ -1,5 +1,5 @@
 // /src/components/LeftPanel/LeftPanel.tsx
-import { useEffect, type FC } from "react";
+import { useEffect, useCallback, type FC } from "react";
 import {
   Container,
   Overlay,
@@ -45,8 +45,9 @@ const LeftPanel: FC<LeftPanelProps> = ({ open, onClose }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // keep layout var in sync with open/close
+  // keep layout var in sync with open/close (client-only)
   useEffect(() => {
+    if (typeof document === "undefined") return;
     const root = document.documentElement;
     const openWidth = "min(360px, 80vw)";
     const closedWidth = "var(--left-closed-width, 0px)";
@@ -56,33 +57,37 @@ const LeftPanel: FC<LeftPanelProps> = ({ open, onClose }) => {
     };
   }, [open]);
 
-  const openContent = (id: number) => {
+  const openContent = useCallback((id: number) => {
     closeOrderForm?.();
     const { closeDashboard, closeSettings, openInStack } = useStore.getState();
     closeDashboard?.(); // ensure right panel exits dashboard mode
     closeSettings?.();  // ensure right panel exits settings mode
     openInStack(id);
-  };
+  }, [closeOrderForm]);
 
-  const handleDelete = async (id: number) => {
+  const handleDelete = useCallback(async (id: number) => {
+    // keep it simple; replace with your modal later if desired
+    // window.confirm() blocks, which is fine for now
     if (confirm("Delete this order?")) {
       await deleteOrder(id);
     }
-  };
+  }, [deleteOrder]);
 
-  const handleDoneToggle = async (id: number, next: boolean) => {
+  const handleDoneToggle = useCallback(async (id: number, next: boolean) => {
+    // If your store returns success/failure, you can use it:
+    // const ok = await setOrderDone(id, next);
+    // if (!ok) return;
     await setOrderDone(id, next);
 
     const prefersReducedMotion =
       typeof window !== "undefined" &&
-      window.matchMedia &&
-      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 
     if (next && !prefersReducedMotion) {
       try {
         const { default: confetti } = await import("canvas-confetti");
         confetti({
-          particleCount: 840,
+          particleCount: 420,   // slightly lower for perf without losing effect
           spread: 210,
           startVelocity: 50,
           gravity: 0.9,
@@ -93,28 +98,41 @@ const LeftPanel: FC<LeftPanelProps> = ({ open, onClose }) => {
           colors: ["#000000"],
         });
       } catch {
-        // ignore
+        // ignore if confetti fails to load
       }
     }
-  };
+  }, [setOrderDone]);
 
-  const handleOpenSettings = () => {
+  const handleOpenSettings = useCallback(() => {
     closeOrderForm?.();
     const { closeDashboard, openSettings } = useStore.getState();
     closeDashboard?.();
     openSettings(); // flip right panel into Settings mode
-  };
+  }, [closeOrderForm]);
 
-  const handleOpenDashboard = () => {
+  const handleOpenDashboard = useCallback(() => {
     closeOrderForm?.();
     const { openDashboard, closeSettings } = useStore.getState();
     closeSettings?.();
     openDashboard(); // flip right panel into Dashboard mode
-  };
+  }, [closeOrderForm]);
+
+  // Single place for row activation with correct keyboard behavior
+  const makeRowKeyDown = useCallback(
+    (id: number) =>
+      (e: React.KeyboardEvent<HTMLLIElement>) => {
+        // Activate on Enter or Space on keyDown for role="button"
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          openContent(id);
+        }
+      },
+    [openContent]
+  );
 
   return (
     <>
-      <Container id="left-menu" className="left-panel" $open={open}>
+      <Container id="left-menu" className="left-panel" $open={open} aria-expanded={open}>
         {/* Header buttons */}
         <ChartButton
           type="button"
@@ -134,12 +152,27 @@ const LeftPanel: FC<LeftPanelProps> = ({ open, onClose }) => {
           <FontAwesomeIcon icon={faGear} />
         </SettingsButton>
 
-        <OrdersList>
+        <OrdersList aria-busy={loading || undefined}>
           {loading && <li>Loading…</li>}
-          {error && <ErrorMsg role="alert">{error}</ErrorMsg>}
-          {!loading && !error && orders.length === 0 && <EmptyMsg>No orders yet</EmptyMsg>}
 
-          {orders.map((o) => {
+          {error && (
+            <li>
+              <ErrorMsg role="alert">
+                {error}
+              </ErrorMsg>
+              <div style={{ padding: "0.5rem 1rem" }}>
+                <IconButton type="button" onClick={fetchOrders} aria-label="Retry loading orders">
+                  Retry
+                </IconButton>
+              </div>
+            </li>
+          )}
+
+          {!loading && !error && orders.length === 0 && (
+            <EmptyMsg>No orders yet</EmptyMsg>
+          )}
+
+          {!loading && !error && orders.map((o) => {
             const cid = `order-check-${o.id}`;
             return (
               <OrderItem
@@ -149,20 +182,10 @@ const LeftPanel: FC<LeftPanelProps> = ({ open, onClose }) => {
                 onClick={() => openContent(o.id)}
                 role="button"
                 tabIndex={0}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    openContent(o.id);
-                  }
-                }}
-                onKeyUp={(e) => {
-                  if (e.key === " " || e.key === "Spacebar") {
-                    e.preventDefault();
-                    openContent(o.id);
-                  }
-                }}
+                onKeyDown={makeRowKeyDown(o.id)}
               >
                 <Row>
+                  {/* Stop propagation so checking doesn't open the row */}
                   <CheckContainer onClick={(e) => e.stopPropagation()}>
                     <CheckOrder
                       id={cid}
@@ -208,6 +231,7 @@ const LeftPanel: FC<LeftPanelProps> = ({ open, onClose }) => {
                     >
                       Edit
                     </IconButton>
+
                     <IconButton
                       type="button"
                       data-variant="danger"
@@ -223,7 +247,12 @@ const LeftPanel: FC<LeftPanelProps> = ({ open, onClose }) => {
           })}
         </OrdersList>
 
-        <PlusButton type="button" aria-label="Add order" title="Add order" onClick={openOrderForm}>
+        <PlusButton
+          type="button"
+          aria-label="Add order"
+          title="Add order"
+          onClick={openOrderForm}
+        >
           <FontAwesomeIcon icon={faPlus} />
         </PlusButton>
       </Container>

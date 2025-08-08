@@ -1,3 +1,4 @@
+// src/commands/settings.rs
 use crate::app_state::AppState;
 use crate::db::{ensure_schema, open_db};
 use rusqlite::OptionalExtension;

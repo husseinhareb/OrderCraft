@@ -1,3 +1,4 @@
+// src/app_state.rs
 use std::path::PathBuf;
 
 #[derive(Clone)]

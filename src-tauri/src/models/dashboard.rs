@@ -1,3 +1,4 @@
+// src/company.rs/dashboard.rs
 use serde::Serialize;
 
 #[derive(Serialize, Debug)]

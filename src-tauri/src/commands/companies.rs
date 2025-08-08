@@ -1,3 +1,4 @@
+// src/commands/companies
 use crate::app_state::AppState;
 use crate::db::{ensure_schema, open_db};
 use crate::models::company::DeliveryCompany;
