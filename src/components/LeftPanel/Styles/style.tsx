@@ -49,3 +49,37 @@ export const PlusButton = styled.button`
     transform: translateY(0);
   }
 `;
+
+
+export const OrdersList = styled.ul`
+  list-style: none;
+  margin: 0;
+  padding: 0 0 72px 0; /* extra bottom space so + button doesn't cover items */
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+`;
+
+export const OrderItem = styled.li`
+  padding: 8px 10px;
+  border: 1px solid #000;
+  border-radius: 6px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: default;
+
+  &:hover {
+    background: #f5f5f5;
+  }
+`;
+
+export const EmptyMsg = styled.li`
+  color: #666;
+  padding: 6px 2px;
+`;
+
+export const ErrorMsg = styled.li`
+  color: #c00;
+  padding: 6px 2px;
+`;

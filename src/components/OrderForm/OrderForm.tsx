@@ -12,7 +12,7 @@ import {
   Select,
   Button,
 } from "./Styles/style";
-import { useUIStore } from "../../store/store";
+import { useStore } from "../../store/store";
 import { invoke } from "@tauri-apps/api/core";
 
 type OrderInput = {
@@ -27,8 +27,8 @@ type OrderInput = {
 };
 
 const OrderForm: FC = () => {
-  const isOpen = useUIStore((s) => s.isOrderFormOpen);
-  const close = useUIStore((s) => s.closeOrderForm);
+  const isOpen = useStore((s) => s.isOrderFormOpen);
+  const close = useStore((s) => s.closeOrderForm);
 
   const [clientName, setClientName] = useState("");
   const [articleName, setArticleName] = useState("");

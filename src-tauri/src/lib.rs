@@ -19,6 +19,13 @@ pub struct Order {
     pub description: Option<String>,
 }
 
+#[derive(Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+struct OrderListItem {
+    id: i64,
+    article_name: String,
+}
+
 #[derive(Clone)]
 struct AppState {
     db_path: PathBuf,
@@ -93,6 +100,34 @@ fn save_order(state: tauri::State<AppState>, order: Order) -> Result<i64, String
     Ok(conn.last_insert_rowid())
 }
 
+
+
+#[tauri::command]
+fn list_orders(state: tauri::State<AppState>) -> Result<Vec<OrderListItem>, String> {
+    let conn = Connection::open(&state.db_path).map_err(|e| e.to_string())?;
+    ensure_schema(&conn).map_err(|e| e.to_string())?;
+
+    let mut stmt = conn
+        .prepare("SELECT id, article_name FROM orders ORDER BY created_at DESC, id DESC")
+        .map_err(|e| e.to_string())?;
+
+    let rows = stmt
+        .query_map([], |row| {
+            Ok(OrderListItem {
+                id: row.get(0)?,
+                article_name: row.get(1)?,
+            })
+        })
+        .map_err(|e| e.to_string())?;
+
+    let mut out = Vec::new();
+    for r in rows {
+        out.push(r.map_err(|e| e.to_string())?);
+    }
+    Ok(out)
+}
+
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -110,7 +145,7 @@ pub fn run() {
             app.manage(AppState { db_path });
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![greet, save_order])
+        .invoke_handler(tauri::generate_handler![greet, save_order, list_orders])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
