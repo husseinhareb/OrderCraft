@@ -4,14 +4,13 @@ use std::path::PathBuf;
 
 use rusqlite::{params, Connection};
 use serde::{Deserialize, Serialize};
-
 use tauri::Manager;
-
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct Order {
     pub client_name: String,
+    pub article_name: String, // <-- NEW
     pub phone: String,
     pub city: String,
     pub address: String,
@@ -30,16 +29,14 @@ fn greet(name: &str) -> String {
     format!("Hello, {}! You've been greeted from Rust!", name)
 }
 
-#[tauri::command]
-fn save_order(state: tauri::State<AppState>, order: Order) -> Result<i64, String> {
-    let conn = Connection::open(&state.db_path).map_err(|e| e.to_string())?;
-
-    // Ensure table exists (safe to run every time)
+fn ensure_schema(conn: &Connection) -> Result<(), rusqlite::Error> {
+    // Create table if missing
     conn.execute(
         r#"
         CREATE TABLE IF NOT EXISTS orders (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           client_name TEXT NOT NULL,
+          article_name TEXT NOT NULL DEFAULT '', -- <-- ensure exists for fresh DBs
           phone TEXT NOT NULL,
           city TEXT NOT NULL,
           address TEXT NOT NULL,
@@ -50,18 +47,39 @@ fn save_order(state: tauri::State<AppState>, order: Order) -> Result<i64, String
         )
         "#,
         [],
-    )
-    .map_err(|e| e.to_string())?;
+    )?;
 
-    // Insert
+    // Lightweight migration for existing DBs that may lack `article_name`
+    // Attempt to add column; ignore the "duplicate column name" error.
+    let alter = conn.execute(
+        r#"ALTER TABLE orders ADD COLUMN article_name TEXT NOT NULL DEFAULT ''"#,
+        [],
+    );
+    if let Err(e) = alter {
+        // If it's not "duplicate column name", bubble it up
+        let msg = e.to_string().to_lowercase();
+        if !msg.contains("duplicate column name") && !msg.contains("duplicate column") {
+            return Err(e);
+        }
+    }
+
+    Ok(())
+}
+
+#[tauri::command]
+fn save_order(state: tauri::State<AppState>, order: Order) -> Result<i64, String> {
+    let conn = Connection::open(&state.db_path).map_err(|e| e.to_string())?;
+    ensure_schema(&conn).map_err(|e| e.to_string())?;
+
     conn.execute(
         r#"
         INSERT INTO orders
-          (client_name, phone, city, address, delivery_company, delivery_date, description)
-        VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)
+          (client_name, article_name, phone, city, address, delivery_company, delivery_date, description)
+        VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)
         "#,
         params![
             order.client_name,
+            order.article_name, // <-- NEW
             order.phone,
             order.city,
             order.address,
@@ -81,28 +99,13 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .setup(|app| {
             // ✅ app_data_dir() returns Result<PathBuf, _> in Tauri v2
-            let data_dir = app.path().app_data_dir()?;         // <- was .ok_or(...)
-            fs::create_dir_all(&data_dir)?;                    // std::io::Error implements Error
+            let data_dir = app.path().app_data_dir()?; // requires `use tauri::Manager;`
+            fs::create_dir_all(&data_dir)?;
             let db_path = data_dir.join("orders.db");
 
-            // Create DB & table once at startup
+            // Create DB & ensure schema at startup
             let conn = Connection::open(&db_path)?;
-            conn.execute(
-                r#"
-                CREATE TABLE IF NOT EXISTS orders (
-                  id INTEGER PRIMARY KEY AUTOINCREMENT,
-                  client_name TEXT NOT NULL,
-                  phone TEXT NOT NULL,
-                  city TEXT NOT NULL,
-                  address TEXT NOT NULL,
-                  delivery_company TEXT NOT NULL,
-                  delivery_date TEXT NOT NULL,
-                  description TEXT,
-                  created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
-                )
-                "#,
-                [],
-            )?;
+            ensure_schema(&conn)?;
 
             app.manage(AppState { db_path });
             Ok(())
