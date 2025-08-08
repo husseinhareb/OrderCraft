@@ -1,5 +1,5 @@
 // /src/components/LeftPanel/LeftPanel.tsx
-import { useEffect, useCallback, useState, type FC } from "react";
+import { useEffect, useCallback, type FC } from "react";
 import {
   Container,
   Overlay,
@@ -21,18 +21,8 @@ import {
 import { useStore } from "../../store/store";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faChartLine, faGear, faPlus } from "@fortawesome/free-solid-svg-icons";
-import { invoke } from "@tauri-apps/api/core";
 
 type LeftPanelProps = { open: boolean; onClose: () => void };
-
-// small helper to read a single setting
-async function getSetting(key: string) {
-  try {
-    return (await invoke<string | null>("get_setting", { key })) ?? null;
-  } catch {
-    return null;
-  }
-}
 
 // ----------------------------------------------------------
 
@@ -48,13 +38,6 @@ const LeftPanel: FC<LeftPanelProps> = ({ open, onClose }) => {
     setOrderDone,
     closeOrderForm,
   } = useStore();
-
-  // current theme from Zustand: "light" | "dark" | "custom"
-  const theme = useStore((s) => s.theme) as "light" | "dark" | "custom";
-
-  // settings + palette
-  const [confettiEnabled, setConfettiEnabled] = useState(true);
-  const [confettiPalette, setConfettiPalette] = useState<string[] | null>(null);
 
   // initial data
   useEffect(() => {
@@ -74,37 +57,6 @@ const LeftPanel: FC<LeftPanelProps> = ({ open, onClose }) => {
     };
   }, [open]);
 
-  // load user setting (confettiOnDone) once
-  useEffect(() => {
-    (async () => {
-      const v = await getSetting("confettiOnDone");
-      setConfettiEnabled((v ?? "true") !== "false");
-    })();
-  }, []);
-
-  // fetch effective confetti palette whenever theme changes
-  useEffect(() => {
-    let alive = true;
-    (async () => {
-      try {
-        // ask backend for the computed palette (handles custom vs light/dark)
-        const colors = await invoke<string[]>("get_confetti_palette");
-        if (!alive) return;
-        if (Array.isArray(colors) && colors.length > 0) {
-          setConfettiPalette(colors);
-          return;
-        }
-      } catch {
-        // fall through to theme-based default
-      }
-      if (!alive) return;
-      setConfettiPalette(theme === "dark" ? ["#ffffff"] : ["#000000"]);
-    })();
-    return () => {
-      alive = false;
-    };
-  }, [theme]);
-
   const openContent = useCallback((id: number) => {
     closeOrderForm?.();
     const { closeDashboard, closeSettings, openInStack } = useStore.getState();
@@ -114,44 +66,42 @@ const LeftPanel: FC<LeftPanelProps> = ({ open, onClose }) => {
   }, [closeOrderForm]);
 
   const handleDelete = useCallback(async (id: number) => {
+    // keep it simple; replace with your modal later if desired
+    // window.confirm() blocks, which is fine for now
     if (confirm("Delete this order?")) {
       await deleteOrder(id);
     }
   }, [deleteOrder]);
 
   const handleDoneToggle = useCallback(async (id: number, next: boolean) => {
+    // If your store returns success/failure, you can use it:
+    // const ok = await setOrderDone(id, next);
+    // if (!ok) return;
     await setOrderDone(id, next);
-
-    // bail if not asked to celebrate
-    if (!next || !confettiEnabled) return;
 
     const prefersReducedMotion =
       typeof window !== "undefined" &&
       window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 
-    if (prefersReducedMotion) return;
-
-    try {
-      const { default: confetti } = await import("canvas-confetti");
-      const colors = confettiPalette && confettiPalette.length > 0
-        ? confettiPalette
-        : (theme === "dark" ? ["#ffffff"] : ["#000000"]);
-
-      confetti({
-        particleCount: 420,
-        spread: 210,
-        startVelocity: 50,
-        gravity: 0.9,
-        decay: 0.9,
-        scalar: 1.0,
-        origin: { x: 0.5, y: 0.5 },
-        zIndex: 1200,
-        colors,
-      });
-    } catch {
-      // ignore if confetti fails to load
+    if (next && !prefersReducedMotion) {
+      try {
+        const { default: confetti } = await import("canvas-confetti");
+        confetti({
+          particleCount: 420,   // slightly lower for perf without losing effect
+          spread: 210,
+          startVelocity: 50,
+          gravity: 0.9,
+          decay: 0.9,
+          scalar: 1.0,
+          origin: { x: 0.5, y: 0.5 },
+          zIndex: 1200,
+          colors: ["#000000"],
+        });
+      } catch {
+        // ignore if confetti fails to load
+      }
     }
-  }, [setOrderDone, confettiEnabled, confettiPalette, theme]);
+  }, [setOrderDone]);
 
   const handleOpenSettings = useCallback(() => {
     closeOrderForm?.();
@@ -167,9 +117,11 @@ const LeftPanel: FC<LeftPanelProps> = ({ open, onClose }) => {
     openDashboard(); // flip right panel into Dashboard mode
   }, [closeOrderForm]);
 
+  // Single place for row activation with correct keyboard behavior
   const makeRowKeyDown = useCallback(
     (id: number) =>
       (e: React.KeyboardEvent<HTMLLIElement>) => {
+        // Activate on Enter or Space on keyDown for role="button"
         if (e.key === "Enter" || e.key === " ") {
           e.preventDefault();
           openContent(id);
@@ -202,8 +154,23 @@ const LeftPanel: FC<LeftPanelProps> = ({ open, onClose }) => {
 
         <OrdersList aria-busy={loading || undefined}>
           {loading && <li>Loading…</li>}
-          {error && <ErrorMsg role="alert">{error}</ErrorMsg>}
-          {!loading && !error && orders.length === 0 && <EmptyMsg>No orders yet</EmptyMsg>}
+
+          {error && (
+            <li>
+              <ErrorMsg role="alert">
+                {error}
+              </ErrorMsg>
+              <div style={{ padding: "0.5rem 1rem" }}>
+                <IconButton type="button" onClick={fetchOrders} aria-label="Retry loading orders">
+                  Retry
+                </IconButton>
+              </div>
+            </li>
+          )}
+
+          {!loading && !error && orders.length === 0 && (
+            <EmptyMsg>No orders yet</EmptyMsg>
+          )}
 
           {!loading && !error && orders.map((o) => {
             const cid = `order-check-${o.id}`;
@@ -218,6 +185,7 @@ const LeftPanel: FC<LeftPanelProps> = ({ open, onClose }) => {
                 onKeyDown={makeRowKeyDown(o.id)}
               >
                 <Row>
+                  {/* Stop propagation so checking doesn't open the row */}
                   <CheckContainer onClick={(e) => e.stopPropagation()}>
                     <CheckOrder
                       id={cid}
@@ -263,6 +231,7 @@ const LeftPanel: FC<LeftPanelProps> = ({ open, onClose }) => {
                     >
                       Edit
                     </IconButton>
+
                     <IconButton
                       type="button"
                       data-variant="danger"
@@ -278,7 +247,12 @@ const LeftPanel: FC<LeftPanelProps> = ({ open, onClose }) => {
           })}
         </OrdersList>
 
-        <PlusButton type="button" aria-label="Add order" title="Add order" onClick={openOrderForm}>
+        <PlusButton
+          type="button"
+          aria-label="Add order"
+          title="Add order"
+          onClick={openOrderForm}
+        >
           <FontAwesomeIcon icon={faPlus} />
         </PlusButton>
       </Container>
