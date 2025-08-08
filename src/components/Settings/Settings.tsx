@@ -39,6 +39,13 @@ type DeliveryCompany = {
   active: boolean;
 };
 
+// Backend DTO (matches the updated Rust ThemeDTO)
+type ThemeDTO = {
+  base: "light" | "dark" | "custom";
+  colors: Record<string, string>;
+  confettiColors?: string[] | null;
+};
+
 // ---------- Helpers ----------
 async function getSetting(key: string) {
   try {
@@ -51,6 +58,21 @@ async function getSetting(key: string) {
 
 async function setSetting(key: string, value: string) {
   await invoke("set_setting", { key, value });
+}
+
+function normalizeConfettiColors(input?: string[] | null): string[] {
+  const arr = Array.isArray(input) ? input.slice(0, 5) : [];
+  // pad to exactly 5 entries (empty slots allowed)
+  while (arr.length < 5) arr.push("");
+  return arr.map((c) => c ?? "");
+}
+
+function sanitizeColorString(v: string): string {
+  return (v || "").trim();
+}
+
+function isHexColor(v: string): boolean {
+  return /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(v.trim());
 }
 
 // ---------- Component ----------
@@ -72,8 +94,12 @@ const Settings: FC = () => {
 
   const customTheme = useStore((s) => s.customTheme);
   const loadCustomTheme = useStore((s) => s.loadCustomTheme);
-  const saveCustomTheme = useStore((s) => s.saveCustomTheme);
   const setCustomThemeLocal = useStore((s) => s.setCustomThemeLocal);
+
+  // NEW: Confetti palette editor (only used when themeChoice === "custom")
+  const [confettiColors, setConfettiColors] = useState<string[]>(
+    normalizeConfettiColors()
+  );
 
   // Companies
   const [companies, setCompanies] = useState<DeliveryCompany[]>([]);
@@ -121,8 +147,18 @@ const Settings: FC = () => {
           setStoreTheme(savedTheme);
         }
 
-        // ensure we have latest custom palette in memory
+        // ensure we have latest custom tokens in memory (kept for the UI token editor)
         await loadCustomTheme();
+
+        // fetch the confetti palette from the backend (works for any base)
+        try {
+          const themeDto = await invoke<ThemeDTO | null>("get_theme_colors");
+          if (mounted && themeDto) {
+            setConfettiColors(normalizeConfettiColors(themeDto.confettiColors));
+          }
+        } catch {
+          // ignore; we'll keep defaults
+        }
 
         setDefaultCity(cityVal || "");
         setConfettiOnDone((confettiVal ?? "true") !== "false");
@@ -157,9 +193,23 @@ const Settings: FC = () => {
     try {
       setStoreTheme(themeChoice); // updates ThemeProvider immediately
       await setSetting("theme", themeChoice); // persist selection
-      if (themeChoice === "custom" && customTheme) {
-        await saveCustomTheme(customTheme); // persist custom palette
-      }
+
+      // Persist custom theme tokens + confetti palette to the backend
+      // We call the backend directly to ensure the confetti JSON is stored under "confetti".
+      const payload: ThemeDTO = {
+        // For custom we keep the "base" that the custom colors override ("light" | "dark").
+        // For light/dark themes, we still save current tokens/palette (preconfig), but app will ignore palette unless themeChoice === "custom".
+        base:
+          themeChoice === "custom"
+            ? (customTheme?.base ?? "light")
+            : (themeChoice as "light" | "dark"),
+        colors: (customTheme?.colors ?? {}) as Record<string, string>,
+        confettiColors: normalizeConfettiColors(confettiColors)
+          .filter((c) => sanitizeColorString(c) !== "")
+          .slice(0, 5),
+      };
+
+      await invoke("save_theme_colors", { payload });
     } catch (e: any) {
       setError(e?.message || "Failed to save theme.");
     }
@@ -170,6 +220,18 @@ const Settings: FC = () => {
     value: string
   ) => {
     setCustomThemeLocal({ colors: { [key]: value } as any });
+  };
+
+  const updateConfettiAt = (idx: number, value: string) => {
+    setConfettiColors((prev) => {
+      const next = prev.slice();
+      next[idx] = sanitizeColorString(value);
+      return next;
+    });
+  };
+
+  const clearConfetti = () => {
+    setConfettiColors(normalizeConfettiColors());
   };
 
   // Handlers — Companies
@@ -337,7 +399,7 @@ const Settings: FC = () => {
               <>
                 <SectionTitle>Custom palette</SectionTitle>
 
-                {/* Base selection */}
+                {/* Base selection for the custom theme (light/dark scaffold) */}
                 <RadioRow>
                   <RadioItem>
                     <input
@@ -382,11 +444,7 @@ const Settings: FC = () => {
                             <Input
                               id={`color-${k}`}
                               type="color"
-                              value={
-                                /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(val)
-                                  ? val
-                                  : "#000000"
-                              }
+                              value={isHexColor(val) ? val : "#000000"}
                               onChange={(e) => updateCustomColor(k, e.target.value)}
                               aria-label={`${k} (color picker)`}
                               style={{ width: 48, padding: 0, height: 36 }}
@@ -421,6 +479,54 @@ const Settings: FC = () => {
                   <code>softShadow</code> you can use <code>rgba()</code> for
                   transparency.
                 </Muted>
+
+                {/* NEW — Confetti palette editor (up to 5 colors) */}
+                <SectionTitle style={{ marginTop: 18 }}>
+                  Confetti palette (up to 5)
+                </SectionTitle>
+                <div
+                  style={{
+                    display: "grid",
+                    gap: 12,
+                    gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+                    alignItems: "start",
+                  }}
+                >
+                  {confettiColors.map((c, i) => {
+                    const hex = isHexColor(c) ? c : "#000000";
+                    return (
+                      <Field key={`confetti-${i}`} style={{ maxWidth: "none" }}>
+                        <Label htmlFor={`confetti-${i}`}>Color {i + 1}</Label>
+                        <InlineWrap>
+                          <Input
+                            id={`confetti-${i}`}
+                            type="color"
+                            value={hex}
+                            onChange={(e) => updateConfettiAt(i, e.target.value)}
+                            aria-label={`Confetti color ${i + 1} (picker)`}
+                            style={{ width: 48, padding: 0, height: 36 }}
+                          />
+                          <Input
+                            value={c}
+                            onChange={(e) => updateConfettiAt(i, e.target.value)}
+                            placeholder="#000000"
+                            aria-label={`Confetti color ${i + 1} (hex)`}
+                          />
+                        </InlineWrap>
+                      </Field>
+                    );
+                  })}
+                </div>
+                <Small>
+                  When theme is <b>Custom</b>, confetti uses these colors. In{" "}
+                  <b>Light</b> it’s black; in <b>Dark</b> it’s white.
+                </Small>
+
+                <div style={{ marginTop: 8 }}>
+                  <SmallButton data-variant="ghost" onClick={clearConfetti}>
+                    Clear confetti palette
+                  </SmallButton>
+                </div>
               </>
             )}
 
