@@ -2,13 +2,17 @@
 import { create } from "zustand";
 import { invoke } from "@tauri-apps/api/core";
 
-export type OrderListItem = { id: number; articleName: string };
+export type OrderListItem = {
+  id: number;
+  articleName: string;
+  done: boolean;          
+};
 
 type AppState = {
   // UI
   isOrderFormOpen: boolean;
   editingOrderId: number | null;
-  openOrderForm: () => void;                // create new
+  openOrderForm: () => void;
   openOrderFormForEdit: (id: number) => void;
   closeOrderForm: () => void;
 
@@ -18,6 +22,7 @@ type AppState = {
   error: string | null;
   fetchOrders: () => Promise<void>;
   deleteOrder: (id: number) => Promise<void>;
+  setOrderDone: (id: number, done: boolean) => Promise<void>; 
 };
 
 export const useStore = create<AppState>((set, get) => ({
@@ -32,6 +37,7 @@ export const useStore = create<AppState>((set, get) => ({
   orders: [],
   loading: false,
   error: null,
+
   fetchOrders: async () => {
     set({ loading: true, error: null });
     try {
@@ -41,15 +47,26 @@ export const useStore = create<AppState>((set, get) => ({
       set({ error: e?.toString?.() ?? "Failed to load orders", loading: false });
     }
   },
+
   deleteOrder: async (id: number) => {
-    set({ loading: true, error: null });
+    set({ error: null });
     try {
       await invoke("delete_order", { id });
-      await get().fetchOrders();
+      set((s) => ({ orders: s.orders.filter((o) => o.id !== id) }));
     } catch (e: any) {
       set({ error: e?.toString?.() ?? "Failed to delete order" });
-    } finally {
-      set({ loading: false });
+    }
+  },
+
+  setOrderDone: async (id: number, done: boolean) => {
+    // optimistic update
+    set((s) => ({ orders: s.orders.map((o) => (o.id === id ? { ...o, done } : o)) }));
+    try {
+      await invoke("set_order_done", { id, done });
+    } catch (e: any) {
+      // revert on error
+      set((s) => ({ orders: s.orders.map((o) => (o.id === id ? { ...o, done: !done } : o)) }));
+      set({ error: e?.toString?.() ?? "Failed to update order status" });
     }
   },
 }));

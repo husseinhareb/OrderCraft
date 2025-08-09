@@ -2,14 +2,14 @@
 import { useEffect, type FC } from "react";
 import {
   Container, Overlay, PlusButton, OrdersList, OrderItem,
-  EmptyMsg, ErrorMsg, Row, RowTitle, RowActions, IconButton
+  EmptyMsg, ErrorMsg, Row, RowTitle, RowActions, IconButton, CheckOrder
 } from "./Styles/style";
 import { useStore } from "../../store/store";
 
 type LeftPanelProps = { open: boolean; onClose: () => void };
 
 const LeftPanel: FC<LeftPanelProps> = ({ open, onClose }) => {
-  const { orders, loading, error, fetchOrders, openOrderForm, openOrderFormForEdit, deleteOrder } = useStore();
+  const { orders, loading, error, fetchOrders, openOrderForm, openOrderFormForEdit, deleteOrder, setOrderDone } = useStore();
 
   useEffect(() => { fetchOrders(); }, [fetchOrders]);
 
@@ -26,8 +26,13 @@ const LeftPanel: FC<LeftPanelProps> = ({ open, onClose }) => {
           {!loading && !error && orders.length === 0 && <EmptyMsg>No orders yet</EmptyMsg>}
 
           {orders.map((o) => (
-            <OrderItem key={o.id} title={o.articleName}>
+            <OrderItem key={o.id} title={o.articleName} data-done={o.done ? "true" : "false"}>
               <Row>
+                <CheckOrder
+                  checked={o.done}
+                  onChange={(e) => setOrderDone(o.id, e.target.checked)}
+                  aria-label={o.done ? "Mark as not done" : "Mark as done"}
+                />
                 <RowTitle>{o.articleName}</RowTitle>
                 <RowActions>
                   <IconButton type="button" onClick={() => openOrderFormForEdit(o.id)} aria-label="Edit order">Edit</IconButton>
