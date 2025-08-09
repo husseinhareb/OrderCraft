@@ -19,7 +19,6 @@ pub struct NewOrderInput {
     pub delivery_company: String,
     pub delivery_date: String, // yyyy-mm-dd
     pub description: Option<String>,
-    // NOTE: no `done` here; DB default will be used
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -33,7 +32,6 @@ pub struct UpdateOrderInput {
     pub delivery_company: String,
     pub delivery_date: String, // yyyy-mm-dd
     pub description: Option<String>,
-    // NOTE: no `done` here; we keep existing value unless set via set_order_done
 }
 
 #[derive(Serialize, Debug)]
@@ -59,6 +57,14 @@ struct OrderWithId {
     done: bool,
 }
 
+#[derive(Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+struct OpenedOrderItem {
+    order_id: i64,
+    article_name: String,
+    position: i64,
+}
+
 #[derive(Clone)]
 struct AppState {
     db_path: PathBuf,
@@ -66,7 +72,9 @@ struct AppState {
 
 // ---------- Helpers ----------
 fn ensure_schema(conn: &Connection) -> Result<(), rusqlite::Error> {
-    // Base table (fresh installs)
+    // Recommended when using FKs
+    conn.execute("PRAGMA foreign_keys = ON", [])?;
+
     conn.execute(
         r#"
         CREATE TABLE IF NOT EXISTS orders (
@@ -86,10 +94,22 @@ fn ensure_schema(conn: &Connection) -> Result<(), rusqlite::Error> {
         [],
     )?;
 
-    // Migrations for older DBs (ignore if column already exists)
-    if let Err(e) =
-        conn.execute(r#"ALTER TABLE orders ADD COLUMN article_name TEXT NOT NULL DEFAULT ''"#, [])
-    {
+    conn.execute(
+        r#"
+        CREATE TABLE IF NOT EXISTS opened_orders (
+          order_id INTEGER PRIMARY KEY,
+          position INTEGER NOT NULL,
+          FOREIGN KEY(order_id) REFERENCES orders(id) ON DELETE CASCADE
+        )
+        "#,
+        [],
+    )?;
+
+    // Migrations (ignore duplicate column errors)
+    if let Err(e) = conn.execute(
+        r#"ALTER TABLE orders ADD COLUMN article_name TEXT NOT NULL DEFAULT ''"#,
+        [],
+    ) {
         let msg = e.to_string().to_lowercase();
         if !msg.contains("duplicate column") {
             return Err(e);
@@ -115,7 +135,6 @@ fn greet(name: &str) -> String {
 
 #[tauri::command]
 fn save_order(state: tauri::State<AppState>, order: NewOrderInput) -> Result<i64, String> {
-    // `done` is omitted here -> DB default (0) is used
     let conn = Connection::open(&state.db_path).map_err(|e| e.to_string())?;
     ensure_schema(&conn).map_err(|e| e.to_string())?;
     conn.execute(
@@ -176,8 +195,11 @@ fn get_order(state: tauri::State<AppState>, id: i64) -> Result<OrderWithId, Stri
 }
 
 #[tauri::command]
-fn update_order(state: tauri::State<AppState>, id: i64, order: UpdateOrderInput) -> Result<(), String> {
-    // `done` is intentionally not updated here; use `set_order_done` for that.
+fn update_order(
+    state: tauri::State<AppState>,
+    id: i64,
+    order: UpdateOrderInput,
+) -> Result<(), String> {
     let conn = Connection::open(&state.db_path).map_err(|e| e.to_string())?;
     ensure_schema(&conn).map_err(|e| e.to_string())?;
     conn.execute(
@@ -259,6 +281,97 @@ fn list_orders(state: tauri::State<AppState>) -> Result<Vec<OrderListItem>, Stri
     Ok(out)
 }
 
+// ---------- Opened orders stack commands ----------
+
+#[tauri::command]
+fn open_order(state: tauri::State<AppState>, id: i64) -> Result<(), String> {
+    let mut conn = Connection::open(&state.db_path).map_err(|e| e.to_string())?; // <-- mut
+    ensure_schema(&conn).map_err(|e| e.to_string())?;
+
+    let tx = conn.transaction().map_err(|e| e.to_string())?;
+    tx.execute("DELETE FROM opened_orders WHERE order_id = ?1", params![id])
+        .map_err(|e| e.to_string())?;
+    tx.execute("UPDATE opened_orders SET position = position + 1", [])
+        .map_err(|e| e.to_string())?;
+    tx.execute(
+        "INSERT INTO opened_orders (order_id, position) VALUES (?1, 1)",
+        params![id],
+    )
+    .map_err(|e| e.to_string())?;
+    tx.commit().map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
+fn get_opened_orders(state: tauri::State<AppState>) -> Result<Vec<OpenedOrderItem>, String> {
+    let conn = Connection::open(&state.db_path).map_err(|e| e.to_string())?;
+    ensure_schema(&conn).map_err(|e| e.to_string())?;
+
+    let mut stmt = conn
+        .prepare(
+            r#"
+            SELECT oo.order_id, o.article_name, oo.position
+            FROM opened_orders oo
+            JOIN orders o ON o.id = oo.order_id
+            ORDER BY oo.position ASC
+            "#,
+        )
+        .map_err(|e| e.to_string())?;
+
+    let rows = stmt
+        .query_map([], |row| {
+            Ok(OpenedOrderItem {
+                order_id: row.get(0)?,
+                article_name: row.get(1)?,
+                position: row.get(2)?,
+            })
+        })
+        .map_err(|e| e.to_string())?;
+
+    let mut out = Vec::new();
+    for r in rows {
+        out.push(r.map_err(|e| e.to_string())?);
+    }
+    Ok(out)
+}
+
+#[tauri::command]
+fn remove_opened_order(state: tauri::State<AppState>, id: i64) -> Result<(), String> {
+    let mut conn = Connection::open(&state.db_path).map_err(|e| e.to_string())?; // <-- mut
+    ensure_schema(&conn).map_err(|e| e.to_string())?;
+
+    let tx = conn.transaction().map_err(|e| e.to_string())?;
+    tx.execute("DELETE FROM opened_orders WHERE order_id = ?1", params![id])
+        .map_err(|e| e.to_string())?;
+
+    // Collect ids in a scoped block so stmt & iterator drop before commit
+    let list: Vec<i64> = {
+        let mut s = tx
+            .prepare("SELECT order_id FROM opened_orders ORDER BY position ASC")
+            .map_err(|e| e.to_string())?;
+        let ids = s
+            .query_map([], |row| row.get::<_, i64>(0))
+            .map_err(|e| e.to_string())?;
+
+        let mut tmp = Vec::new();
+        for r in ids {
+            tmp.push(r.map_err(|e| e.to_string())?);
+        }
+        tmp
+    };
+
+    for (i, oid) in list.iter().enumerate() {
+        tx.execute(
+            "UPDATE opened_orders SET position = ?1 WHERE order_id = ?2",
+            params![i as i64 + 1, oid],
+        )
+        .map_err(|e| e.to_string())?;
+    }
+
+    tx.commit().map_err(|e| e.to_string())?;
+    Ok(())
+}
+
 // ---------- Run ----------
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -282,7 +395,10 @@ pub fn run() {
             update_order,
             set_order_done,
             delete_order,
-            list_orders
+            list_orders,
+            open_order,
+            get_opened_orders,
+            remove_opened_order,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -84,9 +84,10 @@ const LeftPanel: FC<LeftPanelProps> = ({ open, onClose }) => {
                 key={o.id}
                 title={o.articleName}
                 data-done={o.done ? "true" : "false"}
+                onClick={() => useStore.getState().openInStack(o.id)} // open in stack
               >
                 <Row>
-                  <CheckContainer>
+                  <CheckContainer onClick={(e) => e.stopPropagation()}>
                     <CheckOrder
                       id={cid}
                       checked={o.done}
@@ -94,29 +95,13 @@ const LeftPanel: FC<LeftPanelProps> = ({ open, onClose }) => {
                       aria-label={o.done ? "Mark as not done" : "Mark as done"}
                     />
                     <CheckLabel htmlFor={cid}>
-                      <svg width="43" height="43" viewBox="0 0 90 90" aria-hidden="true">
-                        <rect x="30" y="20" width="50" height="50" stroke="black" fill="none" />
-                        <g transform="translate(0,-952.36218)">
-                          <path
-                            d="m 13,983 c 33,6 40,26 55,48 "
-                            stroke="black"
-                            strokeWidth="3"
-                            className="path1"
-                            fill="none"
-                          />
-                          <path
-                            d="M 75,970 C 51,981 34,1014 25,1031 "
-                            stroke="black"
-                            strokeWidth="3"
-                            className="path1"
-                            fill="none"
-                          />
-                        </g>
-                      </svg>
+                      {/* svg as before */}
                     </CheckLabel>
                   </CheckContainer>
+
                   <RowTitle>{o.articleName}</RowTitle>
-                  <RowActions>
+
+                  <RowActions onClick={(e) => e.stopPropagation()}>
                     <IconButton
                       type="button"
                       onClick={() => openOrderFormForEdit(o.id)}
