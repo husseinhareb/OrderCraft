@@ -2,15 +2,14 @@
 import { create } from "zustand";
 import { invoke } from "@tauri-apps/api/core";
 
-export type OrderListItem = {
-  id: number;
-  articleName: string;
-};
+export type OrderListItem = { id: number; articleName: string };
 
 type AppState = {
   // UI
   isOrderFormOpen: boolean;
-  openOrderForm: () => void;
+  editingOrderId: number | null;
+  openOrderForm: () => void;                // create new
+  openOrderFormForEdit: (id: number) => void;
   closeOrderForm: () => void;
 
   // Orders
@@ -18,13 +17,16 @@ type AppState = {
   loading: boolean;
   error: string | null;
   fetchOrders: () => Promise<void>;
+  deleteOrder: (id: number) => Promise<void>;
 };
 
-export const useStore = create<AppState>((set) => ({
+export const useStore = create<AppState>((set, get) => ({
   // UI
   isOrderFormOpen: false,
-  openOrderForm: () => set({ isOrderFormOpen: true }),
-  closeOrderForm: () => set({ isOrderFormOpen: false }),
+  editingOrderId: null,
+  openOrderForm: () => set({ isOrderFormOpen: true, editingOrderId: null }),
+  openOrderFormForEdit: (id) => set({ isOrderFormOpen: true, editingOrderId: id }),
+  closeOrderForm: () => set({ isOrderFormOpen: false, editingOrderId: null }),
 
   // Orders
   orders: [],
@@ -37,6 +39,17 @@ export const useStore = create<AppState>((set) => ({
       set({ orders: data, loading: false });
     } catch (e: any) {
       set({ error: e?.toString?.() ?? "Failed to load orders", loading: false });
+    }
+  },
+  deleteOrder: async (id: number) => {
+    set({ loading: true, error: null });
+    try {
+      await invoke("delete_order", { id });
+      await get().fetchOrders();
+    } catch (e: any) {
+      set({ error: e?.toString?.() ?? "Failed to delete order" });
+    } finally {
+      set({ loading: false });
     }
   },
 }));
