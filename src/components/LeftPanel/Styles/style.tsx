@@ -49,5 +49,8 @@ export const IconButton = styled.button`
   &[data-variant="danger"] { border-color: #c00; color: #c00; }
 `;
 
-export const EmptyMsg = styled.li` color: #666; padding: 6px 2px; `;
+export const EmptyMsg = styled.li`
+color: #666;
+padding: 6px 2px;
+`;
 export const ErrorMsg = styled.li` color: #c00; padding: 6px 2px; `;

@@ -1,6 +1,6 @@
 // /src/components/RightPanel/OrderForm.tsx
 import { useEffect, useState, type FC, type FormEvent } from "react";
-import { Drawer, DrawerBody, DrawerFooter, DrawerHeader, Field, Label, Input, Textarea, Select, Button } from "./Styles/style";
+import { Drawer, DrawerBody, DrawerFooter, DrawerHeader, Field, Label, Input, Textarea, Select, Button, Overlay } from "./Styles/style";
 import { useStore } from "../../store/store";
 import { invoke } from "@tauri-apps/api/core";
 
@@ -80,61 +80,64 @@ const OrderForm: FC = () => {
   };
 
   return (
-    <Drawer $open={isOpen} aria-hidden={!isOpen} aria-label={editingId ? "Edit order" : "Create order"}>
-      <form onSubmit={handleSubmit}>
-        <DrawerHeader>
-          <h3>{editingId ? "Edit Order" : "Create Order"}</h3>
-          <Button type="button" onClick={close} variant="ghost" aria-label="Close">✕</Button>
-        </DrawerHeader>
+    <>
+      <Drawer $open={isOpen} aria-hidden={!isOpen} aria-label={editingId ? "Edit order" : "Create order"}>
+        <form onSubmit={handleSubmit}>
+          <DrawerHeader>
+            <h3>{editingId ? "Edit Order" : "Create Order"}</h3>
+            <Button type="button" onClick={close} variant="ghost" aria-label="Close">✕</Button>
+          </DrawerHeader>
 
-        <DrawerBody>
-          {error && <div role="alert" style={{ color: "red" }}>{error}</div>}
+          <DrawerBody>
+            {error && <div role="alert" style={{ color: "red" }}>{error}</div>}
 
-          <Field><Label htmlFor="clientName">Client name</Label>
-            <Input id="clientName" value={form.clientName} onChange={set("clientName")} required />
-          </Field>
+            <Field><Label htmlFor="clientName">Client name</Label>
+              <Input id="clientName" value={form.clientName} onChange={set("clientName")} required />
+            </Field>
 
-          <Field><Label htmlFor="articleName">Article name</Label>
-            <Input id="articleName" value={form.articleName} onChange={set("articleName")} required />
-          </Field>
+            <Field><Label htmlFor="articleName">Article name</Label>
+              <Input id="articleName" value={form.articleName} onChange={set("articleName")} required />
+            </Field>
 
-          <Field><Label htmlFor="phone">Phone number</Label>
-            <Input id="phone" type="tel" value={form.phone} onChange={set("phone")} required />
-          </Field>
+            <Field><Label htmlFor="phone">Phone number</Label>
+              <Input id="phone" type="tel" value={form.phone} onChange={set("phone")} required />
+            </Field>
 
-          <Field><Label htmlFor="city">City</Label>
-            <Input id="city" value={form.city} onChange={set("city")} required />
-          </Field>
+            <Field><Label htmlFor="city">City</Label>
+              <Input id="city" value={form.city} onChange={set("city")} required />
+            </Field>
 
-          <Field><Label htmlFor="address">Address</Label>
-            <Input id="address" value={form.address} onChange={set("address")} required />
-          </Field>
+            <Field><Label htmlFor="address">Address</Label>
+              <Input id="address" value={form.address} onChange={set("address")} required />
+            </Field>
 
-          <Field><Label htmlFor="deliveryCompany">Delivery company</Label>
-            <Select id="deliveryCompany" value={form.deliveryCompany} onChange={set("deliveryCompany")} required>
-              <option value="" disabled>Select…</option>
-              <option value="DHL">DHL</option>
-              <option value="FedEx">FedEx</option>
-              <option value="UPS">UPS</option>
-              <option value="Local Post">Local Post</option>
-            </Select>
-          </Field>
+            <Field><Label htmlFor="deliveryCompany">Delivery company</Label>
+              <Select id="deliveryCompany" value={form.deliveryCompany} onChange={set("deliveryCompany")} required>
+                <option value="" disabled>Select…</option>
+                <option value="DHL">DHL</option>
+                <option value="FedEx">FedEx</option>
+                <option value="UPS">UPS</option>
+                <option value="Local Post">Local Post</option>
+              </Select>
+            </Field>
 
-          <Field><Label htmlFor="deliveryDate">Delivery date</Label>
-            <Input id="deliveryDate" type="date" value={form.deliveryDate} onChange={set("deliveryDate")} required />
-          </Field>
+            <Field><Label htmlFor="deliveryDate">Delivery date</Label>
+              <Input id="deliveryDate" type="date" value={form.deliveryDate} onChange={set("deliveryDate")} required />
+            </Field>
 
-          <Field><Label htmlFor="description">Order description</Label>
-            <Textarea id="description" rows={4} value={form.description ?? ""} onChange={set("description")} />
-          </Field>
-        </DrawerBody>
+            <Field><Label htmlFor="description">Order description</Label>
+              <Textarea id="description" rows={4} value={form.description ?? ""} onChange={set("description")} />
+            </Field>
+          </DrawerBody>
 
-        <DrawerFooter>
-          <Button type="button" variant="ghost" onClick={close} disabled={saving}>Cancel</Button>
-          <Button type="submit" disabled={saving}>{saving ? "Saving…" : (editingId ? "Update order" : "Save order")}</Button>
-        </DrawerFooter>
-      </form>
-    </Drawer>
+          <DrawerFooter>
+            <Button type="button" variant="ghost" onClick={close} disabled={saving}>Cancel</Button>
+            <Button type="submit" disabled={saving}>{saving ? "Saving…" : (editingId ? "Update order" : "Save order")}</Button>
+          </DrawerFooter>
+        </form>
+      </Drawer>
+      <Overlay $open={isOpen} onClick={close} aria-hidden={!isOpen} />
+    </>
   );
 };
 

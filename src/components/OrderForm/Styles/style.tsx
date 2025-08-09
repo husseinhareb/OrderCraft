@@ -6,6 +6,17 @@ export const Container = styled.div`
   position: relative;
 `;
 
+/* NEW: overlay behind the drawer */
+export const Overlay = styled.div<{ $open: boolean }>`
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  opacity: ${(p) => (p.$open ? 1 : 0)};
+  pointer-events: ${(p) => (p.$open ? "auto" : "none")};
+  transition: opacity 0.3s ease;
+  z-index: 1040; /* below Drawer (1050) */
+`;
+
 /* Slide-in drawer on the right */
 export const Drawer = styled.aside<{ $open: boolean }>`
   position: fixed;
@@ -51,45 +62,20 @@ export const DrawerFooter = styled.div`
   border-top: 1px solid #000;
 `;
 
-export const Field = styled.div`
-  display: grid;
-  gap: 6px;
-`;
-
-export const Label = styled.label`
-  font-size: 14px;
-`;
-
+export const Field = styled.div` display: grid; gap: 6px; `;
+export const Label = styled.label` font-size: 14px; `;
 export const Input = styled.input`
-  padding: 10px 12px;
-  border: 1px solid #000;
-  border-radius: 6px;
-  font-size: 14px;
+  padding: 10px 12px; border: 1px solid #000; border-radius: 6px; font-size: 14px;
 `;
-
 export const Textarea = styled.textarea`
-  padding: 10px 12px;
-  border: 1px solid #000;
-  border-radius: 6px;
-  font-size: 14px;
-  resize: vertical;
+  padding: 10px 12px; border: 1px solid #000; border-radius: 6px; font-size: 14px; resize: vertical;
 `;
-
 export const Select = styled.select`
-  padding: 10px 12px;
-  border: 1px solid #000;
-  border-radius: 6px;
-  font-size: 14px;
+  padding: 10px 12px; border: 1px solid #000; border-radius: 6px; font-size: 14px;
 `;
-
 export const Button = styled.button<{ variant?: "ghost" }>`
-  padding: 10px 14px;
-  border: 1px solid #000;
+  padding: 10px 14px; border: 1px solid #000;
   background: ${(p) => (p.variant === "ghost" ? "transparent" : "#000")};
   color: ${(p) => (p.variant === "ghost" ? "#000" : "#fff")};
-  border-radius: 6px;
-  cursor: pointer;
+  border-radius: 6px; cursor: pointer;
 `;
-
-/* Reuse your existing LeftPanel styles file for these: */
-export const ContainerLeft = styled.div``; // (not used here)
