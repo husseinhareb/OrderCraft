@@ -12,7 +12,9 @@ import {
   RowTitle,
   RowActions,
   IconButton,
+  CheckContainer,
   CheckOrder,
+  CheckLabel,
 } from "./Styles/style";
 import { useStore } from "../../store/store";
 
@@ -56,15 +58,11 @@ const LeftPanel: FC<LeftPanelProps> = ({ open, onClose }) => {
           gravity: 0.9,
           decay: 0.9,
           scalar: 1.0,
-          // center-ish from lower area of the viewport
           origin: { x: 0.5, y: 0.8 },
-          // optional: custom colors/shapes
-          // colors: ["#16a34a", "#f59e0b", "#3b82f6", "#ef4444"],
-          // shapes: ["square", "circle"],
           zIndex: 1200,
         });
       } catch {
-        // If the package isn't available for some reason, just ignore
+        // ignore if package missing
       }
     }
   };
@@ -79,39 +77,66 @@ const LeftPanel: FC<LeftPanelProps> = ({ open, onClose }) => {
             <EmptyMsg>No orders yet</EmptyMsg>
           )}
 
-          {orders.map((o) => (
-            <OrderItem
-              key={o.id}
-              title={o.articleName}
-              data-done={o.done ? "true" : "false"}
-            >
-              <Row>
-                <CheckOrder
-                  checked={o.done}
-                  onChange={(e) => handleDoneToggle(o.id, e.target.checked)}
-                  aria-label={o.done ? "Mark as not done" : "Mark as done"}
-                />
-                <RowTitle>{o.articleName}</RowTitle>
-                <RowActions>
-                  <IconButton
-                    type="button"
-                    onClick={() => openOrderFormForEdit(o.id)}
-                    aria-label="Edit order"
-                  >
-                    Edit
-                  </IconButton>
-                  <IconButton
-                    type="button"
-                    data-variant="danger"
-                    onClick={() => handleDelete(o.id)}
-                    aria-label="Delete order"
-                  >
-                    Delete
-                  </IconButton>
-                </RowActions>
-              </Row>
-            </OrderItem>
-          ))}
+          {orders.map((o) => {
+            const cid = `order-check-${o.id}`;
+            return (
+              <OrderItem
+                key={o.id}
+                title={o.articleName}
+                data-done={o.done ? "true" : "false"}
+              >
+                <Row>
+                  <CheckContainer>
+                    <CheckOrder
+                      id={cid}
+                      checked={o.done}
+                      onChange={(e) => handleDoneToggle(o.id, e.target.checked)}
+                      aria-label={o.done ? "Mark as not done" : "Mark as done"}
+                    />
+                    <CheckLabel htmlFor={cid}>
+                      <svg width="43" height="43" viewBox="0 0 90 90" aria-hidden="true">
+                        <rect x="30" y="20" width="50" height="50" stroke="black" fill="none" />
+                        <g transform="translate(0,-952.36218)">
+                          <path
+                            d="m 13,983 c 33,6 40,26 55,48 "
+                            stroke="black"
+                            strokeWidth="3"
+                            className="path1"
+                            fill="none"
+                          />
+                          <path
+                            d="M 75,970 C 51,981 34,1014 25,1031 "
+                            stroke="black"
+                            strokeWidth="3"
+                            className="path1"
+                            fill="none"
+                          />
+                        </g>
+                      </svg>
+                    </CheckLabel>
+                  </CheckContainer>
+                  <RowTitle>{o.articleName}</RowTitle>
+                  <RowActions>
+                    <IconButton
+                      type="button"
+                      onClick={() => openOrderFormForEdit(o.id)}
+                      aria-label="Edit order"
+                    >
+                      Edit
+                    </IconButton>
+                    <IconButton
+                      type="button"
+                      data-variant="danger"
+                      onClick={() => handleDelete(o.id)}
+                      aria-label="Delete order"
+                    >
+                      Delete
+                    </IconButton>
+                  </RowActions>
+                </Row>
+              </OrderItem>
+            );
+          })}
         </OrdersList>
 
         <PlusButton

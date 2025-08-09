@@ -4,7 +4,7 @@ import { styled } from "styled-components";
 export const Container = styled.div<{ $open: boolean }>`
   position: fixed; 
   inset: 0 auto 0 0;
-   width: 280px;
+   width: 20%;
     max-width: 80vw;
      height: 100%;
   background: #fff; border-right: 2px solid black;
@@ -37,11 +37,14 @@ export const OrdersList = styled.ul`
 
 export const OrderItem = styled.li`
   padding: 8px 10px;
-   border: 1px solid #000;
-    border-radius: 6px;
+  border: 1px solid #000;
+  border-radius: 6px;
   background: #fff;
-    cursor: pointer;
-
+  transition: opacity 0.2s ease;
+  cursor: pointer;
+  &[data-done="true"] {
+    opacity: 0.6;
+  }
 `;
 
 export const Row = styled.div`
@@ -49,7 +52,16 @@ export const Row = styled.div`
 `;
 
 export const RowTitle = styled.span`
-  flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+
+  /* strike-through when parent item is done */
+  ${OrderItem}[data-done="true"] & {
+    text-decoration: line-through;
+  }
 `;
 
 export const RowActions = styled.div`
@@ -67,6 +79,41 @@ padding: 6px 2px;
 `;
 export const ErrorMsg = styled.li` color: #c00; padding: 6px 2px; `;
 
-export const CheckOrder = styled.input.attrs({type: "checkbox"})`
-  
+export const CheckContainer = styled.div`
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  overflow: hidden;
+`;
+
+/* Visually hidden checkbox, still focusable/clickable via label */
+export const CheckOrder = styled.input.attrs({ type: "checkbox" })`
+  position: absolute;
+  width: 50px;
+  height: 50px;
+  inset: 0;
+  opacity: 0;
+`;
+
+/* Label with the animated SVG check */
+export const CheckLabel = styled.label`
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+
+  svg {
+    vertical-align: middle;
+  }
+
+  /* animated stroke */
+  .path1 {
+    stroke-dasharray: 400;
+    stroke-dashoffset: 400;
+    transition: 0.5s all;
+  }
+
+  /* when input is checked, animate both paths */
+  ${CheckOrder}:checked + & svg g path {
+    stroke-dashoffset: 0;
+  }
 `;
