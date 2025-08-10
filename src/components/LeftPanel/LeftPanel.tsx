@@ -30,11 +30,27 @@ const LeftPanel: FC<LeftPanelProps> = ({ open, onClose }) => {
     openOrderFormForEdit,
     deleteOrder,
     setOrderDone,
+    closeOrderForm, 
   } = useStore();
 
+  // initial data
   useEffect(() => {
     fetchOrders();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // keep layout var in sync with open/close
+  useEffect(() => {
+    const root = document.documentElement;
+    root.style.setProperty("--left-panel-width", open ? "min(360px, 80vw)" : "0px");
+    return () => root.style.setProperty("--left-panel-width", "0px");
+  }, [open]);
+
+  const openContent = (id: number) => {
+    // ensure the drawer is closed, then show content via the opened stack
+    closeOrderForm?.();
+    useStore.getState().openInStack(id);
+  };
 
   const handleDelete = async (id: number) => {
     if (confirm("Delete this order?")) {
@@ -63,20 +79,14 @@ const LeftPanel: FC<LeftPanelProps> = ({ open, onClose }) => {
       }
     }
   };
-useEffect(() => {
-  const root = document.documentElement;
-  root.style.setProperty("--left-panel-width", open ? "min(360px, 80vw)" : "0px");
-  return () => root.style.setProperty("--left-panel-width", "0px");
-}, [open]);
+
   return (
     <>
       <Container id="left-menu" className="left-panel" $open={open}>
         <OrdersList>
           {loading && <li>Loading…</li>}
           {error && <ErrorMsg role="alert">{error}</ErrorMsg>}
-          {!loading && !error && orders.length === 0 && (
-            <EmptyMsg>No orders yet</EmptyMsg>
-          )}
+          {!loading && !error && orders.length === 0 && <EmptyMsg>No orders yet</EmptyMsg>}
 
           {orders.map((o) => {
             const cid = `order-check-${o.id}`;
@@ -85,7 +95,15 @@ useEffect(() => {
                 key={o.id}
                 title={o.articleName}
                 data-done={o.done ? "true" : "false"}
-                onClick={() => useStore.getState().openInStack(o.id)}
+                onClick={() => openContent(o.id)}                
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    openContent(o.id);
+                  }
+                }}
               >
                 <Row>
                   <CheckContainer onClick={(e) => e.stopPropagation()}>
@@ -123,7 +141,7 @@ useEffect(() => {
                   <RowActions onClick={(e) => e.stopPropagation()}>
                     <IconButton
                       type="button"
-                      onClick={() => openOrderFormForEdit(o.id)}
+                      onClick={() => openOrderFormForEdit(o.id)}    
                       aria-label="Edit order"
                     >
                       Edit
@@ -147,7 +165,7 @@ useEffect(() => {
           type="button"
           aria-label="Add order"
           title="Add order"
-          onClick={openOrderForm}
+          onClick={openOrderForm}                              
         >
           +
         </PlusButton>

@@ -89,23 +89,23 @@ const OrderForm: FC = () => {
     };
   }, [isOpen]);
   useEffect(() => {
-  if (!isOpen) return;
-  const prev = document.body.style.overflow;
-  document.body.style.overflow = "hidden";
-  return () => { document.body.style.overflow = prev; };
-}, [isOpen]);
+    if (!isOpen) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = prev; };
+  }, [isOpen]);
 
-// Focus first field when opening (simple focus management)
-useEffect(() => {
-  if (isOpen) document.getElementById("clientName")?.focus();
-}, [isOpen]);
+  // Focus first field when opening (simple focus management)
+  useEffect(() => {
+    if (isOpen) document.getElementById("clientName")?.focus();
+  }, [isOpen]);
   return (
     <>
-       <Drawer
-   $open={isOpen}
- role="dialog"
-   aria-modal="true"
-   aria-labelledby="order-drawer-title"  aria-hidden={!isOpen}>
+      <Drawer
+        $open={isOpen}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="order-drawer-title" aria-hidden={!isOpen}>
         <form onSubmit={handleSubmit}>
           <DrawerHeader>
             <h3 id="order-drawer-title">{editingId ? "Edit Order" : "Create Order"}</h3>

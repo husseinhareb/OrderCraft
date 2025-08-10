@@ -13,6 +13,10 @@ export const Container = styled.div<{ $open: boolean }>`
   transition: transform 0.3s ease;
   z-index: 1000;
   padding: 16px;
+  border-right: ${(p) => (p.$open ? "2px solid black" : "0")};
+padding: ${(p) => (p.$open ? "16px" : "0")};
+overflow: hidden;
+
 `;
 export const Overlay = styled.div<{ $open: boolean }>`
   position: fixed;

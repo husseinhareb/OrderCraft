@@ -6,13 +6,12 @@ export const OpenedBar = styled.div`
   z-index: 1045;  /* > overlay(1040), < drawer(1050) */
   background: #fff;
   border-bottom: 1px solid #000;
-  padding: 8px 12px;
   width: 100%;
+  height: 100px
 `;
 
 export const OpenedList = styled.div`
   display: flex;
-  gap: 8px;
   flex-wrap: wrap;
 `;
 
@@ -22,7 +21,6 @@ export const OpenedChip = styled.button`
   gap: 8px;
   padding: 6px 10px;
   border: 1px solid #000;
-  border-radius: 9999px;
   background: #fff;
   cursor: pointer;
 
@@ -39,5 +37,4 @@ export const CloseChipBtn = styled.button`
   background: transparent;
   cursor: pointer;
   font-size: 14px;
-  line-height: 1;
 `;
