@@ -1,4 +1,4 @@
-import type { FC } from "react";
+import { useEffect, type FC } from "react";
 import { useStore } from "../../store/store";
 import { OpenedBar, OpenedList, OpenedChip, CloseChipBtn } from "./Styles/style";
 
@@ -6,12 +6,11 @@ const OpenedOrders: FC = () => {
   const { opened, fetchOpened, closeFromStack } = useStore();
   const openOrderFormForEdit = useStore((s) => s.openOrderFormForEdit);
 
-  // Ensure list is loaded (in case not fetched yet)
-  // You can also move this to App/RightPanel if you prefer
-  // React 18 strict mounts twice in dev; harmless
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  if (!opened.length) fetchOpened();
 
+    useEffect(() => {
+    if (!opened.length) fetchOpened();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [opened.length]);
   return (
     <OpenedBar aria-label="Opened orders">
       <OpenedList>

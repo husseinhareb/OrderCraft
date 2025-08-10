@@ -2,21 +2,31 @@
 
 import { styled } from "styled-components";
 export const Container = styled.div<{ $open: boolean }>`
-  position: fixed; 
+  position: fixed;
   inset: 0 auto 0 0;
-   width: 20%;
-    max-width: 80vw;
-     height: 100%;
-  background: #fff; border-right: 2px solid black;
+  width: var(--left-panel-width, 0);
+  max-width: 80vw;
+  height: 100%;
+  background: #fff;
+  border-right: 2px solid black;
   transform: translateX(${(p) => (p.$open ? "0" : "-100%")});
-  transition: transform 0.3s ease; z-index: 1000; padding: 16px;
+  transition: transform 0.3s ease;
+  z-index: 1000;
+  padding: 16px;
 `;
-
 export const Overlay = styled.div<{ $open: boolean }>`
-  position: fixed; inset: 0; background: rgba(0,0,0,0.4);
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  /* start just to the right of the left shelf, and stop before the right drawer */
+  left: var(--left-panel-width, 0);
+  right: var(--right-drawer-width, 0);
+
+  background: rgba(0,0,0,0.4);
   opacity: ${(p) => (p.$open ? 1 : 0)};
   pointer-events: ${(p) => (p.$open ? "auto" : "none")};
-  transition: opacity 0.3s ease; z-index: 999;
+  transition: opacity 0.3s ease;
+  z-index: 999; /* below the left panel (1000) */
 `;
 
 export const PlusButton = styled.button`

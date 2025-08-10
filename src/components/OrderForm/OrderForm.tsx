@@ -1,4 +1,4 @@
-// /src/components/RightPanel/OrderForm.tsx
+// /src/components/OrderForm/OrderForm.tsx
 import { useEffect, useState, type FC, type FormEvent } from "react";
 import { Drawer, DrawerBody, DrawerFooter, DrawerHeader, Field, Label, Input, Textarea, Select, Button, Overlay } from "./Styles/style";
 import { useStore } from "../../store/store";
@@ -79,12 +79,36 @@ const OrderForm: FC = () => {
     }
   };
 
+  useEffect(() => {
+    const root = document.documentElement;
+    // When open, reserve exactly what the drawer takes (responsive).
+    root.style.setProperty("--right-drawer-width", isOpen ? "min(420px, 95vw)" : "0px");
+    return () => {
+      // safety: reset if component unmounts
+      root.style.setProperty("--right-drawer-width", "0px");
+    };
+  }, [isOpen]);
+  useEffect(() => {
+  if (!isOpen) return;
+  const prev = document.body.style.overflow;
+  document.body.style.overflow = "hidden";
+  return () => { document.body.style.overflow = prev; };
+}, [isOpen]);
+
+// Focus first field when opening (simple focus management)
+useEffect(() => {
+  if (isOpen) document.getElementById("clientName")?.focus();
+}, [isOpen]);
   return (
     <>
-      <Drawer $open={isOpen} aria-hidden={!isOpen} aria-label={editingId ? "Edit order" : "Create order"}>
+       <Drawer
+   $open={isOpen}
+ role="dialog"
+   aria-modal="true"
+   aria-labelledby="order-drawer-title"  aria-hidden={!isOpen}>
         <form onSubmit={handleSubmit}>
           <DrawerHeader>
-            <h3>{editingId ? "Edit Order" : "Create Order"}</h3>
+            <h3 id="order-drawer-title">{editingId ? "Edit Order" : "Create Order"}</h3>
             <Button type="button" onClick={close} variant="ghost" aria-label="Close">✕</Button>
           </DrawerHeader>
 

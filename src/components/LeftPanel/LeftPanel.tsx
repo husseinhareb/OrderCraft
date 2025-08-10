@@ -32,10 +32,8 @@ const LeftPanel: FC<LeftPanelProps> = ({ open, onClose }) => {
     setOrderDone,
   } = useStore();
 
-  // Load once on mount
   useEffect(() => {
     fetchOrders();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleDelete = async (id: number) => {
@@ -47,18 +45,17 @@ const LeftPanel: FC<LeftPanelProps> = ({ open, onClose }) => {
   const handleDoneToggle = async (id: number, next: boolean) => {
     await setOrderDone(id, next);
 
-    // Celebrate only when marking as done
     if (next) {
       try {
         const { default: confetti } = await import("canvas-confetti");
         confetti({
-          particleCount: 440,
-          spread: 110,
+          particleCount: 840,
+          spread: 210,
           startVelocity: 50,
           gravity: 0.9,
           decay: 0.9,
           scalar: 1.0,
-          origin: { x: 0.5, y: 0.8 },
+          origin: { x: 0.5, y: 0.5 },
           zIndex: 1200,
         });
       } catch {
@@ -66,7 +63,11 @@ const LeftPanel: FC<LeftPanelProps> = ({ open, onClose }) => {
       }
     }
   };
-
+useEffect(() => {
+  const root = document.documentElement;
+  root.style.setProperty("--left-panel-width", open ? "min(360px, 80vw)" : "0px");
+  return () => root.style.setProperty("--left-panel-width", "0px");
+}, [open]);
   return (
     <>
       <Container id="left-menu" className="left-panel" $open={open}>
@@ -84,7 +85,7 @@ const LeftPanel: FC<LeftPanelProps> = ({ open, onClose }) => {
                 key={o.id}
                 title={o.articleName}
                 data-done={o.done ? "true" : "false"}
-                onClick={() => useStore.getState().openInStack(o.id)} // open in stack
+                onClick={() => useStore.getState().openInStack(o.id)}
               >
                 <Row>
                   <CheckContainer onClick={(e) => e.stopPropagation()}>
@@ -95,7 +96,25 @@ const LeftPanel: FC<LeftPanelProps> = ({ open, onClose }) => {
                       aria-label={o.done ? "Mark as not done" : "Mark as done"}
                     />
                     <CheckLabel htmlFor={cid}>
-                      {/* svg as before */}
+                      <svg width="43" height="43" viewBox="0 0 90 90" aria-hidden="true">
+                        <rect x="30" y="20" width="50" height="50" stroke="black" fill="none" />
+                        <g transform="translate(0,-952.36218)">
+                          <path
+                            d="m 13,983 c 33,6 40,26 55,48 "
+                            stroke="black"
+                            strokeWidth="3"
+                            className="path1"
+                            fill="none"
+                          />
+                          <path
+                            d="M 75,970 C 51,981 34,1014 25,1031 "
+                            stroke="black"
+                            strokeWidth="3"
+                            className="path1"
+                            fill="none"
+                          />
+                        </g>
+                      </svg>
                     </CheckLabel>
                   </CheckContainer>
 

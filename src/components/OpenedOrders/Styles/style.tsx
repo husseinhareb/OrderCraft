@@ -3,10 +3,11 @@ import { styled } from "styled-components";
 export const OpenedBar = styled.div`
   position: sticky;
   top: 0;
-  z-index: 1010;
+  z-index: 1045;  /* > overlay(1040), < drawer(1050) */
   background: #fff;
   border-bottom: 1px solid #000;
   padding: 8px 12px;
+  width: 100%;
 `;
 
 export const OpenedList = styled.div`

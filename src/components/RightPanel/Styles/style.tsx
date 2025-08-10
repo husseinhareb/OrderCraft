@@ -1,8 +1,13 @@
-// /src/components/LeftPanel/Styles/style.tsx
+// /src/components/RightPanel/Styles/style.tsx
 
 import { styled } from "styled-components";
 
-export const Container =styled.div`
-    height: 100%;
-    border : 2px solid black
-`;
+export const Container = styled.div`
+   position: relative;
+   min-height: 100%;
+  background-color: red;
+  box-sizing: border-box;
+    width: max(0px, calc(100% - var(--left-panel-width, 0) - var(--right-drawer-width, 0)));
+   margin-left: var(--left-panel-width, 0);
+  transition: width 0.3s ease, margin-left 0.3s ease;
+ `;

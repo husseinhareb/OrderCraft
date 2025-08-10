@@ -1,4 +1,4 @@
-// /src/components/RightPanel/Styles/style.tsx
+// /src/components/OrderForm/Styles/style.tsx
 import { styled } from "styled-components";
 
 export const Container = styled.div`
@@ -6,15 +6,19 @@ export const Container = styled.div`
   position: relative;
 `;
 
-/* NEW: overlay behind the drawer */
 export const Overlay = styled.div<{ $open: boolean }>`
   position: fixed;
-  inset: 0;
+  top: 0;
+  bottom: 0;
+  /* don't cover the left shelf or the drawer itself */
+  left: var(--left-panel-width, 0);
+  right: var(--right-drawer-width, 0);
+
   background: rgba(0, 0, 0, 0.4);
   opacity: ${(p) => (p.$open ? 1 : 0)};
   pointer-events: ${(p) => (p.$open ? "auto" : "none")};
   transition: opacity 0.3s ease;
-  z-index: 1040; /* below Drawer (1050) */
+  z-index: 1040; /* below Drawer(1050), below OpenedBar(1045) */
 `;
 
 /* Slide-in drawer on the right */
@@ -23,8 +27,8 @@ export const Drawer = styled.aside<{ $open: boolean }>`
   top: 0;
   right: 0;
   height: 100%;
-  width: 420px;
-  max-width: 95vw;
+  /* was: width: 420px; max-width: 95vw; */
+  width: min(420px, 95vw);
   background: #fff;
   border-left: 2px solid black;
   transform: translateX(${(p) => (p.$open ? "0" : "100%")});
@@ -36,6 +40,7 @@ export const Drawer = styled.aside<{ $open: boolean }>`
 
   form { height: 100%; display: flex; flex-direction: column; }
 `;
+
 
 export const DrawerHeader = styled.div`
   display: flex;
