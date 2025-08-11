@@ -13,19 +13,19 @@ body,
   width: 100%;
 }
 
-.app-container {
-  height: 100%;
-}
 
-.right-panel {
-  min-height: 100%;
+:root{
+  --hamburger-left: 16px;     
+  --hamburger-width: 40px;    
+  --hamburger-gap: 8px;       
+  --left-closed-width: calc(var(--hamburger-left) + var(--hamburger-width) + var(--hamburger-gap));
 }
 
 .hamburger {
   position: fixed;
   top: 16px;
-  left: 16px;
-  width: 40px;
+  left: var(--hamburger-left);
+  width: var(--hamburger-width);
   height: 32px;
   padding: 6px 8px;
   display: inline-flex;
@@ -34,7 +34,7 @@ body,
   background: transparent;
   border: none;
   cursor: pointer;
-  z-index: 1100; 
+  z-index: 1100;
 }
 
 .hamburger span {

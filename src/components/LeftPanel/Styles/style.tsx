@@ -1,6 +1,8 @@
 // /src/components/LeftPanel/Styles/style.tsx
 
 import { styled } from "styled-components";
+
+
 export const Container = styled.div<{ $open: boolean }>`
   position: fixed;
   inset: 0 auto 0 0;
@@ -8,16 +10,14 @@ export const Container = styled.div<{ $open: boolean }>`
   max-width: 80vw;
   height: 100%;
   background: #fff;
-  border-right: 2px solid black;
   transform: translateX(${(p) => (p.$open ? "0" : "-100%")});
-  transition: transform 0.3s ease;
+  /* transition: transform 0.1s ease, padding 0.1s ease, border-right 0.1s ease; */
   z-index: 1000;
-  padding: 16px;
   border-right: ${(p) => (p.$open ? "2px solid black" : "0")};
-padding: ${(p) => (p.$open ? "16px" : "0")};
-overflow: hidden;
-
+  padding: ${(p) => (p.$open ? "16px" : "0")};
+  overflow: hidden;
 `;
+
 export const Overlay = styled.div<{ $open: boolean }>`
   position: fixed;
   top: 0;
@@ -72,7 +72,6 @@ export const RowTitle = styled.span`
   overflow: hidden;
   text-overflow: ellipsis;
 
-  /* strike-through when parent item is done */
   ${OrderItem}[data-done="true"] & {
     text-decoration: line-through;
   }
@@ -100,7 +99,6 @@ export const CheckContainer = styled.div`
   overflow: hidden;
 `;
 
-/* Visually hidden checkbox, still focusable/clickable via label */
 export const CheckOrder = styled.input.attrs({ type: "checkbox" })`
   position: absolute;
   width: 50px;
@@ -109,7 +107,6 @@ export const CheckOrder = styled.input.attrs({ type: "checkbox" })`
   opacity: 0;
 `;
 
-/* Label with the animated SVG check */
 export const CheckLabel = styled.label`
   display: inline-flex;
   align-items: center;
@@ -119,14 +116,12 @@ export const CheckLabel = styled.label`
     vertical-align: middle;
   }
 
-  /* animated stroke */
   .path1 {
     stroke-dasharray: 400;
     stroke-dashoffset: 400;
     transition: 0.5s all;
   }
 
-  /* when input is checked, animate both paths */
   ${CheckOrder}:checked + & svg g path {
     stroke-dashoffset: 0;
   }

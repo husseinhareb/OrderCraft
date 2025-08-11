@@ -3,6 +3,7 @@ use std::fs;
 use std::path::PathBuf;
 
 use rusqlite::{params, Connection};
+use rusqlite::OptionalExtension;
 use serde::{Deserialize, Serialize};
 use tauri::Manager;
 
@@ -71,6 +72,7 @@ struct AppState {
 }
 
 // ---------- Helpers ----------
+
 fn ensure_schema(conn: &Connection) -> Result<(), rusqlite::Error> {
     // Recommended when using FKs
     conn.execute("PRAGMA foreign_keys = ON", [])?;
@@ -115,19 +117,35 @@ fn ensure_schema(conn: &Connection) -> Result<(), rusqlite::Error> {
             return Err(e);
         }
     }
-    if let Err(e) =
-        conn.execute(r#"ALTER TABLE orders ADD COLUMN done INTEGER NOT NULL DEFAULT 0"#, [])
-    {
+    if let Err(e) = conn.execute(
+        r#"ALTER TABLE orders ADD COLUMN done INTEGER NOT NULL DEFAULT 0"#,
+        [],
+    ) {
         let msg = e.to_string().to_lowercase();
         if !msg.contains("duplicate column") {
             return Err(e);
         }
     }
 
+    // Indexes
+    conn.execute(
+        r#"CREATE INDEX IF NOT EXISTS idx_orders_article_name ON orders(article_name)"#,
+        [],
+    )?;
+
     Ok(())
 }
 
+// Escape LIKE wildcards (_ % \) for use with ESCAPE '\'
+fn escape_like(input: &str) -> String {
+    input
+        .replace('\\', r#"\\"#)
+        .replace('%', r#"\%"#)
+        .replace('_', r#"\_"#)
+}
+
 // ---------- Commands ----------
+
 #[tauri::command]
 fn greet(name: &str) -> String {
     format!("Hello, {}! You've been greeted from Rust!", name)
@@ -235,8 +253,11 @@ fn update_order(
 fn set_order_done(state: tauri::State<AppState>, id: i64, done: bool) -> Result<(), String> {
     let conn = Connection::open(&state.db_path).map_err(|e| e.to_string())?;
     ensure_schema(&conn).map_err(|e| e.to_string())?;
-    conn.execute(r#"UPDATE orders SET done = ?1 WHERE id = ?2"#, params![done, id])
-        .map_err(|e| e.to_string())?;
+    conn.execute(
+        r#"UPDATE orders SET done = ?1 WHERE id = ?2"#,
+        params![done, id],
+    )
+    .map_err(|e| e.to_string())?;
     Ok(())
 }
 
@@ -285,7 +306,7 @@ fn list_orders(state: tauri::State<AppState>) -> Result<Vec<OrderListItem>, Stri
 
 #[tauri::command]
 fn open_order(state: tauri::State<AppState>, id: i64) -> Result<(), String> {
-    let mut conn = Connection::open(&state.db_path).map_err(|e| e.to_string())?; // <-- mut
+    let mut conn = Connection::open(&state.db_path).map_err(|e| e.to_string())?;
     ensure_schema(&conn).map_err(|e| e.to_string())?;
 
     let tx = conn.transaction().map_err(|e| e.to_string())?;
@@ -337,7 +358,7 @@ fn get_opened_orders(state: tauri::State<AppState>) -> Result<Vec<OpenedOrderIte
 
 #[tauri::command]
 fn remove_opened_order(state: tauri::State<AppState>, id: i64) -> Result<(), String> {
-    let mut conn = Connection::open(&state.db_path).map_err(|e| e.to_string())?; // <-- mut
+    let mut conn = Connection::open(&state.db_path).map_err(|e| e.to_string())?;
     ensure_schema(&conn).map_err(|e| e.to_string())?;
 
     let tx = conn.transaction().map_err(|e| e.to_string())?;
@@ -363,7 +384,7 @@ fn remove_opened_order(state: tauri::State<AppState>, id: i64) -> Result<(), Str
     for (i, oid) in list.iter().enumerate() {
         tx.execute(
             "UPDATE opened_orders SET position = ?1 WHERE order_id = ?2",
-            params![i as i64 + 1, oid],
+            params![(i as i64) + 1, oid],
         )
         .map_err(|e| e.to_string())?;
     }
@@ -372,7 +393,78 @@ fn remove_opened_order(state: tauri::State<AppState>, id: i64) -> Result<(), Str
     Ok(())
 }
 
+// --- new commands ---
+
+#[tauri::command]
+fn search_article_names(
+    state: tauri::State<AppState>,
+    query: String,
+    limit: Option<i64>,
+) -> Result<Vec<String>, String> {
+    let conn = Connection::open(&state.db_path).map_err(|e| e.to_string())?;
+    ensure_schema(&conn).map_err(|e| e.to_string())?;
+
+    // contains search: %query% (case-insensitive in SQLite for ASCII)
+    let pat = format!("%{}%", escape_like(&query));
+    let lim = limit.unwrap_or(10).max(1);
+
+    // Order by frequency, then most recent first
+    let mut stmt = conn
+        .prepare(
+            r#"
+            SELECT o.article_name
+            FROM orders o
+            WHERE o.article_name LIKE ?1 ESCAPE '\'
+            GROUP BY o.article_name
+            ORDER BY COUNT(*) DESC, MAX(o.created_at) DESC
+            LIMIT ?2
+            "#,
+        )
+        .map_err(|e| e.to_string())?;
+
+    let rows = stmt
+        .query_map(params![pat, lim], |row| row.get::<_, String>(0))
+        .map_err(|e| e.to_string())?;
+
+    let mut out = Vec::new();
+    for r in rows {
+        out.push(r.map_err(|e| e.to_string())?);
+    }
+    Ok(out)
+}
+
+#[tauri::command]
+fn get_latest_description_for_article(
+    state: tauri::State<AppState>,
+    name: String,
+) -> Result<Option<String>, String> {
+    let conn = Connection::open(&state.db_path).map_err(|e| e.to_string())?;
+    ensure_schema(&conn).map_err(|e| e.to_string())?;
+
+    let mut stmt = conn
+        .prepare(
+            r#"
+            SELECT description
+            FROM orders
+            WHERE article_name = ?1
+              AND description IS NOT NULL
+              AND TRIM(description) <> ''
+            ORDER BY created_at DESC, id DESC
+            LIMIT 1
+            "#,
+        )
+        .map_err(|e| e.to_string())?;
+
+    let desc: Option<String> = stmt
+        .query_row(params![name], |row| row.get::<_, String>(0))
+        .optional()
+        .map_err(|e| e.to_string())?;
+
+    Ok(desc)
+}
+
 // ---------- Run ----------
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -399,6 +491,8 @@ pub fn run() {
             open_order,
             get_opened_orders,
             remove_opened_order,
+            search_article_names,
+            get_latest_description_for_article
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

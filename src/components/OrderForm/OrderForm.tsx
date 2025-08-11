@@ -1,5 +1,5 @@
 // /src/components/OrderForm/OrderForm.tsx
-import { useEffect, useState, type FC, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FC, type FormEvent } from "react";
 import { Drawer, DrawerBody, DrawerFooter, DrawerHeader, Field, Label, Input, Textarea, Select, Button, Overlay } from "./Styles/style";
 import { useStore } from "../../store/store";
 import { invoke } from "@tauri-apps/api/core";
@@ -22,6 +22,10 @@ const blank: OrderInput = {
   deliveryCompany: "", deliveryDate: "", description: "",
 };
 
+// ---- City autocomplete config ----
+const COUNTRY = "fr"; // ISO-3166 alpha-2 (change as needed)
+const PLACE_TYPES = new Set(["city", "town", "village", "hamlet", "locality", "municipality", "suburb"]);
+
 const OrderForm: FC = () => {
   const isOpen = useStore((s) => s.isOrderFormOpen);
   const editingId = useStore((s) => s.editingOrderId);
@@ -31,6 +35,15 @@ const OrderForm: FC = () => {
   const [form, setForm] = useState<OrderInput>(blank);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // suggestions state + debounce timer (articles)
+  const [articleOptions, setArticleOptions] = useState<string[]>([]);
+  const articleDebounceId = useRef<number | null>(null);
+
+  // NEW: city suggestions + debounce timer
+  const [cityOptions, setCityOptions] = useState<string[]>([]);
+  const cityDebounceId = useRef<number | null>(null);
+  const cityAbort = useRef<AbortController | null>(null);
 
   // Prefill when editing
   useEffect(() => {
@@ -72,6 +85,8 @@ const OrderForm: FC = () => {
       await fetchOrders();
       close();
       setForm(blank);
+      setArticleOptions([]);
+      setCityOptions([]);
     } catch (err: any) {
       setError(err?.toString() ?? "Failed to save order");
     } finally {
@@ -79,14 +94,11 @@ const OrderForm: FC = () => {
     }
   };
 
+  // Drawer sizing + scroll lock
   useEffect(() => {
     const root = document.documentElement;
-    // When open, reserve exactly what the drawer takes (responsive).
     root.style.setProperty("--right-drawer-width", isOpen ? "min(420px, 95vw)" : "0px");
-    return () => {
-      // safety: reset if component unmounts
-      root.style.setProperty("--right-drawer-width", "0px");
-    };
+    return () => root.style.setProperty("--right-drawer-width", "0px");
   }, [isOpen]);
   useEffect(() => {
     if (!isOpen) return;
@@ -95,10 +107,117 @@ const OrderForm: FC = () => {
     return () => { document.body.style.overflow = prev; };
   }, [isOpen]);
 
-  // Focus first field when opening (simple focus management)
+  // Focus first field when opening
   useEffect(() => {
     if (isOpen) document.getElementById("clientName")?.focus();
   }, [isOpen]);
+
+  // Fetch article suggestions as the user types (debounced)
+  useEffect(() => {
+    if (!isOpen) return;
+    const q = form.articleName.trim();
+    if (articleDebounceId.current) window.clearTimeout(articleDebounceId.current);
+
+    articleDebounceId.current = window.setTimeout(async () => {
+      if (!q) { setArticleOptions([]); return; }
+      try {
+        const list = await invoke<string[]>("search_article_names", { query: q, limit: 8 });
+        setArticleOptions(list);
+      } catch {
+        // ignore suggestion errors silently
+      }
+    }, 150);
+
+    return () => {
+      if (articleDebounceId.current) window.clearTimeout(articleDebounceId.current);
+    };
+  }, [form.articleName, isOpen]);
+
+  // If articleName matches a suggestion and description is empty, autofill latest description
+  useEffect(() => {
+    if (!isOpen) return;
+    const name = form.articleName.trim();
+    if (!name) return;
+    if (!articleOptions.includes(name)) return;
+    if (form.description && form.description.trim().length > 0) return;
+
+    (async () => {
+      try {
+        const desc = await invoke<string | null>("get_latest_description_for_article", { name });
+        if (desc && (!form.description || form.description.trim() === "")) {
+          setForm((f) => ({ ...f, description: desc }));
+        }
+      } catch {
+        // ignore autofill errors
+      }
+    })();
+  }, [form.articleName, articleOptions, isOpen]);
+
+  // NEW: Fetch city suggestions (debounced, country-restricted)
+  useEffect(() => {
+    if (!isOpen) return;
+    const q = form.city.trim();
+    if (cityDebounceId.current) window.clearTimeout(cityDebounceId.current);
+    cityAbort.current?.abort();
+
+    cityDebounceId.current = window.setTimeout(async () => {
+      if (!q || q.length < 2) { setCityOptions([]); return; }
+
+      const url = new URL("https://nominatim.openstreetmap.org/search");
+      url.search = new URLSearchParams({
+        q,
+        format: "jsonv2",
+        addressdetails: "1",
+        countrycodes: COUNTRY,
+        limit: "8",
+      }).toString();
+
+      const controller = new AbortController();
+      cityAbort.current = controller;
+
+      try {
+        const res = await fetch(url.toString(), {
+          // Can't set User-Agent from browser; Referer is sent automatically.
+          headers: { "Accept-Language": "en" }, // change to your UI language if desired
+          signal: controller.signal,
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const rows: any[] = await res.json();
+
+        // Map to "name" and de-dupe
+        const names: string[] = [];
+        const seen = new Set<string>();
+
+        for (const r of rows) {
+          if (!PLACE_TYPES.has(r.type)) continue;
+
+          const name =
+            r.name ??
+            r.address?.city ??
+            r.address?.town ??
+            r.address?.village ??
+            r.address?.hamlet ??
+            r.address?.locality;
+
+          if (!name) continue;
+          const key = name.toLowerCase();
+          if (seen.has(key)) continue;
+          seen.add(key);
+          names.push(name);
+        }
+
+        setCityOptions(names);
+      } catch {
+        // swallow errors; this is best-effort
+      }
+    }, 180);
+
+    return () => {
+      if (cityDebounceId.current) window.clearTimeout(cityDebounceId.current);
+      cityAbort.current?.abort();
+    };
+  }, [form.city, isOpen]);
+
   return (
     <>
       <Drawer
@@ -119,16 +238,44 @@ const OrderForm: FC = () => {
               <Input id="clientName" value={form.clientName} onChange={set("clientName")} required />
             </Field>
 
-            <Field><Label htmlFor="articleName">Article name</Label>
-              <Input id="articleName" value={form.articleName} onChange={set("articleName")} required />
+            <Field>
+              <Label htmlFor="articleName">Article name</Label>
+              <Input
+                id="articleName"
+                list="articleName-suggestions"
+                value={form.articleName}
+                onChange={set("articleName")}
+                required
+                aria-autocomplete="list"
+                autoComplete="off"
+              />
+              <datalist id="articleName-suggestions">
+                {articleOptions.map((n) => (
+                  <option key={n} value={n} />
+                ))}
+              </datalist>
             </Field>
 
             <Field><Label htmlFor="phone">Phone number</Label>
               <Input id="phone" type="tel" value={form.phone} onChange={set("phone")} required />
             </Field>
 
-            <Field><Label htmlFor="city">City</Label>
-              <Input id="city" value={form.city} onChange={set("city")} required />
+            <Field>
+              <Label htmlFor="city">City</Label>
+              <Input
+                id="city"
+                list="city-suggestions"
+                value={form.city}
+                onChange={set("city")}
+                required
+                aria-autocomplete="list"
+                autoComplete="off"
+              />
+              <datalist id="city-suggestions">
+                {cityOptions.map((n) => (
+                  <option key={n} value={n} />
+                ))}
+              </datalist>
             </Field>
 
             <Field><Label htmlFor="address">Address</Label>

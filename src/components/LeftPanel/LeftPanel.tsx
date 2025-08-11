@@ -30,7 +30,7 @@ const LeftPanel: FC<LeftPanelProps> = ({ open, onClose }) => {
     openOrderFormForEdit,
     deleteOrder,
     setOrderDone,
-    closeOrderForm, 
+    closeOrderForm,
   } = useStore();
 
   // initial data
@@ -39,11 +39,15 @@ const LeftPanel: FC<LeftPanelProps> = ({ open, onClose }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // keep layout var in sync with open/close
+  // keep layout var in sync with open/close (single authoritative effect)
   useEffect(() => {
     const root = document.documentElement;
-    root.style.setProperty("--left-panel-width", open ? "min(360px, 80vw)" : "0px");
-    return () => root.style.setProperty("--left-panel-width", "0px");
+    const openWidth = "min(360px, 80vw)";
+    const closedWidth = "var(--left-closed-width, 0px)";
+    root.style.setProperty("--left-panel-width", open ? openWidth : closedWidth);
+    return () => {
+      root.style.setProperty("--left-panel-width", closedWidth);
+    };
   }, [open]);
 
   const openContent = (id: number) => {
@@ -61,7 +65,13 @@ const LeftPanel: FC<LeftPanelProps> = ({ open, onClose }) => {
   const handleDoneToggle = async (id: number, next: boolean) => {
     await setOrderDone(id, next);
 
-    if (next) {
+    // celebrate completion, but respect reduced motion and SSR
+    const prefersReducedMotion =
+      typeof window !== "undefined" &&
+      window.matchMedia &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+    if (next && !prefersReducedMotion) {
       try {
         const { default: confetti } = await import("canvas-confetti");
         confetti({
@@ -95,11 +105,17 @@ const LeftPanel: FC<LeftPanelProps> = ({ open, onClose }) => {
                 key={o.id}
                 title={o.articleName}
                 data-done={o.done ? "true" : "false"}
-                onClick={() => openContent(o.id)}                
+                onClick={() => openContent(o.id)}
                 role="button"
                 tabIndex={0}
                 onKeyDown={(e) => {
-                  if (e.key === "Enter" || e.key === " ") {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    openContent(o.id);
+                  }
+                }}
+                onKeyUp={(e) => {
+                  if (e.key === " " || e.key === "Spacebar") {
                     e.preventDefault();
                     openContent(o.id);
                   }
@@ -141,7 +157,7 @@ const LeftPanel: FC<LeftPanelProps> = ({ open, onClose }) => {
                   <RowActions onClick={(e) => e.stopPropagation()}>
                     <IconButton
                       type="button"
-                      onClick={() => openOrderFormForEdit(o.id)}    
+                      onClick={() => openOrderFormForEdit(o.id)}
                       aria-label="Edit order"
                     >
                       Edit
@@ -161,12 +177,7 @@ const LeftPanel: FC<LeftPanelProps> = ({ open, onClose }) => {
           })}
         </OrdersList>
 
-        <PlusButton
-          type="button"
-          aria-label="Add order"
-          title="Add order"
-          onClick={openOrderForm}                              
-        >
+        <PlusButton type="button" aria-label="Add order" title="Add order" onClick={openOrderForm}>
           +
         </PlusButton>
       </Container>

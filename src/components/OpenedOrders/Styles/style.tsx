@@ -1,18 +1,16 @@
 import { styled } from "styled-components";
 
 export const OpenedBar = styled.div`
-  position: sticky;
   top: 0;
-  z-index: 1045;  /* > overlay(1040), < drawer(1050) */
+  z-index: 1045;
   background: #fff;
-  border-bottom: 1px solid #000;
-  width: 100%;
-  height: 100px
+  height: 40px
 `;
 
 export const OpenedList = styled.div`
   display: flex;
   flex-wrap: wrap;
+  height: 100%;
 `;
 
 export const OpenedChip = styled.button`
