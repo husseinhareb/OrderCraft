@@ -126,3 +126,52 @@ export const CheckLabel = styled.label`
     stroke-dashoffset: 0;
   }
 `;
+
+
+// ---------- styled components for Settings modal ----------
+export const SettingsOverlay = styled.div`
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  z-index: 1300;
+`;
+
+export const SettingsModal = styled.div`
+  position: fixed;
+  top: 8vh;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(820px, 92vw);
+  max-height: 84vh;
+  overflow: auto;
+  background: var(--panel-bg, #fff);
+  border-radius: 16px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+  padding: 16px;
+  z-index: 1310;
+`;
+
+export const SettingsHeader = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+`;
+
+export const SettingsTitle = styled.h3`
+  margin: 0;
+`;
+
+export const CloseBtn = styled.button`
+  border: none;
+  background: transparent;
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 8px;
+
+  &:hover {
+    background: rgba(0, 0, 0, 0.06);
+  }
+`;

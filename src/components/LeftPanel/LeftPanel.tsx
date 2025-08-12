@@ -1,5 +1,5 @@
 // /src/components/LeftPanel/LeftPanel.tsx
-import { useEffect, type FC } from "react";
+import { useEffect, useState, lazy, Suspense, type FC } from "react";
 import {
   Container,
   Overlay,
@@ -15,10 +15,20 @@ import {
   CheckContainer,
   CheckOrder,
   CheckLabel,
+  SettingsOverlay,
+  SettingsModal,
+  SettingsHeader,
+  SettingsTitle,
+  CloseBtn,
 } from "./Styles/style";
 import { useStore } from "../../store/store";
 
+// Lazy-load the settings component. Path: /src/components/Settings/Settings.tsx
+const Settings = lazy(() => import("../Settings/Settings"));
+
 type LeftPanelProps = { open: boolean; onClose: () => void };
+
+// ----------------------------------------------------------
 
 const LeftPanel: FC<LeftPanelProps> = ({ open, onClose }) => {
   const {
@@ -33,13 +43,16 @@ const LeftPanel: FC<LeftPanelProps> = ({ open, onClose }) => {
     closeOrderForm,
   } = useStore();
 
+  // Show/hide Settings modal
+  const [showSettings, setShowSettings] = useState(false);
+
   // initial data
   useEffect(() => {
     fetchOrders();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // keep layout var in sync with open/close (single authoritative effect)
+  // keep layout var in sync with open/close
   useEffect(() => {
     const root = document.documentElement;
     const openWidth = "min(360px, 80vw)";
@@ -51,7 +64,6 @@ const LeftPanel: FC<LeftPanelProps> = ({ open, onClose }) => {
   }, [open]);
 
   const openContent = (id: number) => {
-    // ensure the drawer is closed, then show content via the opened stack
     closeOrderForm?.();
     useStore.getState().openInStack(id);
   };
@@ -65,7 +77,6 @@ const LeftPanel: FC<LeftPanelProps> = ({ open, onClose }) => {
   const handleDoneToggle = async (id: number, next: boolean) => {
     await setOrderDone(id, next);
 
-    // celebrate completion, but respect reduced motion and SSR
     const prefersReducedMotion =
       typeof window !== "undefined" &&
       window.matchMedia &&
@@ -85,14 +96,37 @@ const LeftPanel: FC<LeftPanelProps> = ({ open, onClose }) => {
           zIndex: 1200,
         });
       } catch {
-        // ignore if package missing
+        // ignore
       }
     }
   };
 
+  const handleOpenSettings = () => {
+    closeOrderForm?.();
+    setShowSettings(true);
+  };
+  const handleCloseSettings = () => setShowSettings(false);
+
+  const settingsTitleId = "settings-title";
+
   return (
     <>
       <Container id="left-menu" className="left-panel" $open={open}>
+        {/* Header with Settings button */}
+        <Row aria-label="Panel header" style={{ padding: "8px 12px" }}>
+          <RowTitle>Orders</RowTitle>
+          <RowActions>
+            <IconButton
+              type="button"
+              onClick={handleOpenSettings}
+              aria-label="Open settings"
+              title="Settings"
+            >
+              ⚙︎
+            </IconButton>
+          </RowActions>
+        </Row>
+
         <OrdersList>
           {loading && <li>Loading…</li>}
           {error && <ErrorMsg role="alert">{error}</ErrorMsg>}
@@ -182,7 +216,37 @@ const LeftPanel: FC<LeftPanelProps> = ({ open, onClose }) => {
         </PlusButton>
       </Container>
 
+      {/* Overlay that closes the left panel */}
       <Overlay $open={open} onClick={onClose} aria-hidden={!open} />
+
+      {/* SETTINGS MODAL (styled-components) */}
+      {showSettings && (
+        <>
+          <SettingsOverlay onClick={handleCloseSettings} aria-hidden="true" />
+          <SettingsModal
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby={settingsTitleId}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <SettingsHeader>
+              <SettingsTitle id={settingsTitleId}>Settings</SettingsTitle>
+              <CloseBtn
+                type="button"
+                onClick={handleCloseSettings}
+                aria-label="Close settings"
+                title="Close"
+              >
+                ✕
+              </CloseBtn>
+            </SettingsHeader>
+
+            <Suspense fallback={<div style={{ padding: 12 }}>Loading settings…</div>}>
+              <Settings />
+            </Suspense>
+          </SettingsModal>
+        </>
+      )}
     </>
   );
 };

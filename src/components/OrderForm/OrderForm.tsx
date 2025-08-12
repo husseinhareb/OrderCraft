@@ -1,6 +1,9 @@
 // /src/components/OrderForm/OrderForm.tsx
-import { useEffect, useRef, useState, type FC, type FormEvent } from "react";
-import { Drawer, DrawerBody, DrawerFooter, DrawerHeader, Field, Label, Input, Textarea, Select, Button, Overlay } from "./Styles/style";
+import { useEffect, useRef, useState, useMemo, type FC, type FormEvent } from "react";
+import {
+  Drawer, DrawerBody, DrawerFooter, DrawerHeader,
+  Field, Label, Input, Textarea, Select, Button, Overlay
+} from "./Styles/style";
 import { useStore } from "../../store/store";
 import { invoke } from "@tauri-apps/api/core";
 
@@ -22,10 +25,6 @@ const blank: OrderInput = {
   deliveryCompany: "", deliveryDate: "", description: "",
 };
 
-// ---- City autocomplete config ----
-const COUNTRY = "fr"; // ISO-3166 alpha-2 (change as needed)
-const PLACE_TYPES = new Set(["city", "town", "village", "hamlet", "locality", "municipality", "suburb"]);
-
 const OrderForm: FC = () => {
   const isOpen = useStore((s) => s.isOrderFormOpen);
   const editingId = useStore((s) => s.editingOrderId);
@@ -36,20 +35,28 @@ const OrderForm: FC = () => {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // suggestions state + debounce timer (articles)
+  // Article suggestions (from DB) + debounce
   const [articleOptions, setArticleOptions] = useState<string[]>([]);
   const articleDebounceId = useRef<number | null>(null);
 
-  // NEW: city suggestions + debounce timer
-  const [cityOptions, setCityOptions] = useState<string[]>([]);
-  const cityDebounceId = useRef<number | null>(null);
-  const cityAbort = useRef<AbortController | null>(null);
+  const errorId = "order-error";
+
+  const todayISO = useMemo(() => {
+    const d = new Date();
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, "0");
+    const dd = String(d.getDate()).padStart(2, "0");
+    return `${yyyy}-${mm}-${dd}`;
+  }, []);
 
   // Prefill when editing
   useEffect(() => {
+    let cancelled = false;
+
     const load = async (id: number) => {
       try {
         const data = await invoke<OrderDetail>("get_order", { id });
+        if (cancelled) return;
         setForm({
           clientName: data.clientName,
           articleName: data.articleName,
@@ -61,16 +68,19 @@ const OrderForm: FC = () => {
           description: data.description ?? "",
         });
       } catch (e: any) {
-        setError(e?.toString?.() ?? "Failed to load order");
+        if (!cancelled) setError(e?.toString?.() ?? "Failed to load order");
       }
     };
 
     if (isOpen && editingId != null) load(editingId);
     if (isOpen && editingId == null) setForm(blank);
+
+    return () => { cancelled = true; };
   }, [isOpen, editingId]);
 
-  const set = (k: keyof OrderInput) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
-    setForm((f) => ({ ...f, [k]: e.target.value }));
+  const set = (k: keyof OrderInput) =>
+    (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
+      setForm((f) => ({ ...f, [k]: e.target.value }));
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -86,7 +96,6 @@ const OrderForm: FC = () => {
       close();
       setForm(blank);
       setArticleOptions([]);
-      setCityOptions([]);
     } catch (err: any) {
       setError(err?.toString() ?? "Failed to save order");
     } finally {
@@ -100,19 +109,30 @@ const OrderForm: FC = () => {
     root.style.setProperty("--right-drawer-width", isOpen ? "min(420px, 95vw)" : "0px");
     return () => root.style.setProperty("--right-drawer-width", "0px");
   }, [isOpen]);
+
+  // ESC to close + body scroll lock
   useEffect(() => {
     if (!isOpen) return;
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
-    return () => { document.body.style.overflow = prev; };
-  }, [isOpen]);
+
+    const onKeyDown = (ev: KeyboardEvent) => {
+      if (ev.key === "Escape" && !saving) close();
+    };
+    window.addEventListener("keydown", onKeyDown);
+
+    return () => {
+      document.body.style.overflow = prev;
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, [isOpen, saving, close]);
 
   // Focus first field when opening
   useEffect(() => {
     if (isOpen) document.getElementById("clientName")?.focus();
   }, [isOpen]);
 
-  // Fetch article suggestions as the user types (debounced)
+  // ------- Article suggestions (unchanged) -------
   useEffect(() => {
     if (!isOpen) return;
     const q = form.articleName.trim();
@@ -126,14 +146,14 @@ const OrderForm: FC = () => {
       } catch {
         // ignore suggestion errors silently
       }
-    }, 150);
+    }, 250);
 
     return () => {
       if (articleDebounceId.current) window.clearTimeout(articleDebounceId.current);
     };
   }, [form.articleName, isOpen]);
 
-  // If articleName matches a suggestion and description is empty, autofill latest description
+  // Autofill latest description if article name matches a suggestion
   useEffect(() => {
     if (!isOpen) return;
     const name = form.articleName.trim();
@@ -141,82 +161,20 @@ const OrderForm: FC = () => {
     if (!articleOptions.includes(name)) return;
     if (form.description && form.description.trim().length > 0) return;
 
+    let cancelled = false;
     (async () => {
       try {
         const desc = await invoke<string | null>("get_latest_description_for_article", { name });
-        if (desc && (!form.description || form.description.trim() === "")) {
+        if (!cancelled && desc && (!form.description || form.description.trim() === "")) {
           setForm((f) => ({ ...f, description: desc }));
         }
       } catch {
         // ignore autofill errors
       }
     })();
-  }, [form.articleName, articleOptions, isOpen]);
 
-  // NEW: Fetch city suggestions (debounced, country-restricted)
-  useEffect(() => {
-    if (!isOpen) return;
-    const q = form.city.trim();
-    if (cityDebounceId.current) window.clearTimeout(cityDebounceId.current);
-    cityAbort.current?.abort();
-
-    cityDebounceId.current = window.setTimeout(async () => {
-      if (!q || q.length < 2) { setCityOptions([]); return; }
-
-      const url = new URL("https://nominatim.openstreetmap.org/search");
-      url.search = new URLSearchParams({
-        q,
-        format: "jsonv2",
-        addressdetails: "1",
-        countrycodes: COUNTRY,
-        limit: "8",
-      }).toString();
-
-      const controller = new AbortController();
-      cityAbort.current = controller;
-
-      try {
-        const res = await fetch(url.toString(), {
-          // Can't set User-Agent from browser; Referer is sent automatically.
-          headers: { "Accept-Language": "en" }, // change to your UI language if desired
-          signal: controller.signal,
-        });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const rows: any[] = await res.json();
-
-        // Map to "name" and de-dupe
-        const names: string[] = [];
-        const seen = new Set<string>();
-
-        for (const r of rows) {
-          if (!PLACE_TYPES.has(r.type)) continue;
-
-          const name =
-            r.name ??
-            r.address?.city ??
-            r.address?.town ??
-            r.address?.village ??
-            r.address?.hamlet ??
-            r.address?.locality;
-
-          if (!name) continue;
-          const key = name.toLowerCase();
-          if (seen.has(key)) continue;
-          seen.add(key);
-          names.push(name);
-        }
-
-        setCityOptions(names);
-      } catch {
-        // swallow errors; this is best-effort
-      }
-    }, 180);
-
-    return () => {
-      if (cityDebounceId.current) window.clearTimeout(cityDebounceId.current);
-      cityAbort.current?.abort();
-    };
-  }, [form.city, isOpen]);
+    return () => { cancelled = true; };
+  }, [form.articleName, articleOptions, isOpen]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <>
@@ -224,18 +182,31 @@ const OrderForm: FC = () => {
         $open={isOpen}
         role="dialog"
         aria-modal="true"
-        aria-labelledby="order-drawer-title" aria-hidden={!isOpen}>
-        <form onSubmit={handleSubmit}>
+        aria-labelledby="order-drawer-title"
+        aria-hidden={!isOpen}
+      >
+        <form onSubmit={handleSubmit} aria-busy={saving} aria-describedby={error ? errorId : undefined}>
           <DrawerHeader>
             <h3 id="order-drawer-title">{editingId ? "Edit Order" : "Create Order"}</h3>
-            <Button type="button" onClick={close} variant="ghost" aria-label="Close">✕</Button>
+            <Button type="button" onClick={close} variant="ghost" aria-label="Close" disabled={saving}>✕</Button>
           </DrawerHeader>
 
           <DrawerBody>
-            {error && <div role="alert" style={{ color: "red" }}>{error}</div>}
+            {error && (
+              <div id={errorId} role="alert" style={{ color: "red" }}>
+                {error}
+              </div>
+            )}
 
-            <Field><Label htmlFor="clientName">Client name</Label>
-              <Input id="clientName" value={form.clientName} onChange={set("clientName")} required />
+            <Field>
+              <Label htmlFor="clientName">Client name</Label>
+              <Input
+                id="clientName"
+                value={form.clientName}
+                onChange={set("clientName")}
+                required
+                autoComplete="name"
+              />
             </Field>
 
             <Field>
@@ -256,34 +227,56 @@ const OrderForm: FC = () => {
               </datalist>
             </Field>
 
-            <Field><Label htmlFor="phone">Phone number</Label>
-              <Input id="phone" type="tel" value={form.phone} onChange={set("phone")} required />
+            <Field>
+              <Label htmlFor="phone">Phone number</Label>
+              <Input
+                id="phone"
+                type="tel"
+                inputMode="tel"
+                autoComplete="tel"
+                pattern="^\\+?[0-9\\s().-]{6,20}$"
+                title="Use digits, spaces, or .()-; min 6 digits."
+                value={form.phone}
+                onChange={set("phone")}
+                required
+              />
+              {/* For France, you could use:
+                  pattern="^(\\+33|0)[1-9](\\s?\\d{2}){4}$"
+                  title="French phone number, e.g. 01 23 45 67 89 or +33 1 23 45 67 89"
+              */}
             </Field>
 
             <Field>
               <Label htmlFor="city">City</Label>
               <Input
                 id="city"
-                list="city-suggestions"
                 value={form.city}
                 onChange={set("city")}
                 required
-                aria-autocomplete="list"
-                autoComplete="off"
+                autoComplete="address-level2"
               />
-              <datalist id="city-suggestions">
-                {cityOptions.map((n) => (
-                  <option key={n} value={n} />
-                ))}
-              </datalist>
             </Field>
 
-            <Field><Label htmlFor="address">Address</Label>
-              <Input id="address" value={form.address} onChange={set("address")} required />
+            <Field>
+              <Label htmlFor="address">Address</Label>
+              <Input
+                id="address"
+                value={form.address}
+                onChange={set("address")}
+                required
+                autoComplete="address-line1"
+              />
             </Field>
 
-            <Field><Label htmlFor="deliveryCompany">Delivery company</Label>
-              <Select id="deliveryCompany" value={form.deliveryCompany} onChange={set("deliveryCompany")} required>
+            <Field>
+              <Label htmlFor="deliveryCompany">Delivery company</Label>
+              <Select
+                id="deliveryCompany"
+                value={form.deliveryCompany}
+                onChange={set("deliveryCompany")}
+                required
+                autoComplete="off"
+              >
                 <option value="" disabled>Select…</option>
                 <option value="DHL">DHL</option>
                 <option value="FedEx">FedEx</option>
@@ -292,22 +285,43 @@ const OrderForm: FC = () => {
               </Select>
             </Field>
 
-            <Field><Label htmlFor="deliveryDate">Delivery date</Label>
-              <Input id="deliveryDate" type="date" value={form.deliveryDate} onChange={set("deliveryDate")} required />
+            <Field>
+              <Label htmlFor="deliveryDate">Delivery date</Label>
+              <Input
+                id="deliveryDate"
+                type="date"
+                value={form.deliveryDate}
+                onChange={set("deliveryDate")}
+                required
+                min={todayISO}
+              />
             </Field>
 
-            <Field><Label htmlFor="description">Order description</Label>
-              <Textarea id="description" rows={4} value={form.description ?? ""} onChange={set("description")} />
+            <Field>
+              <Label htmlFor="description">Order description</Label>
+              <Textarea
+                id="description"
+                rows={4}
+                value={form.description ?? ""}
+                onChange={set("description")}
+                autoComplete="off"
+              />
             </Field>
           </DrawerBody>
 
           <DrawerFooter>
             <Button type="button" variant="ghost" onClick={close} disabled={saving}>Cancel</Button>
-            <Button type="submit" disabled={saving}>{saving ? "Saving…" : (editingId ? "Update order" : "Save order")}</Button>
+            <Button type="submit" disabled={saving}>
+              {saving ? "Saving…" : (editingId ? "Update order" : "Save order")}
+            </Button>
           </DrawerFooter>
         </form>
       </Drawer>
-      <Overlay $open={isOpen} onClick={close} aria-hidden={!isOpen} />
+      <Overlay
+        $open={isOpen}
+        onClick={() => { if (!saving) close(); }}
+        aria-hidden={!isOpen}
+      />
     </>
   );
 };
