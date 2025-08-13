@@ -66,6 +66,14 @@ struct OpenedOrderItem {
     position: i64,
 }
 
+#[derive(Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+struct DeliveryCompany {
+    id: i64,
+    name: String,
+    active: bool,
+}
+
 #[derive(Clone)]
 struct AppState {
     db_path: PathBuf,
@@ -76,7 +84,7 @@ struct AppState {
 fn ensure_schema(conn: &Connection) -> Result<(), rusqlite::Error> {
     conn.execute("PRAGMA foreign_keys = ON", [])?;
 
-    // --- existing tables (unchanged) ---
+    // --- existing tables ---
     conn.execute(
         r#"
         CREATE TABLE IF NOT EXISTS orders (
@@ -90,7 +98,10 @@ fn ensure_schema(conn: &Connection) -> Result<(), rusqlite::Error> {
           delivery_date TEXT NOT NULL,
           description TEXT,
           done INTEGER NOT NULL DEFAULT 0,
-          created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+          created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+          -- may be added later via migration below
+          delivery_company_id INTEGER
+            -- (can't add FK constraint on ALTER, enforced via code + indexes)
         )
         "#,
         [],
@@ -107,7 +118,7 @@ fn ensure_schema(conn: &Connection) -> Result<(), rusqlite::Error> {
         [],
     )?;
 
-    // --- NEW: delivery_companies ---
+    // --- delivery_companies ---
     conn.execute(
         r#"
         CREATE TABLE IF NOT EXISTS delivery_companies (
@@ -124,7 +135,7 @@ fn ensure_schema(conn: &Connection) -> Result<(), rusqlite::Error> {
         [],
     )?;
 
-    // keep orders.delivery_company text synced when a name changes
+    // Keep orders.delivery_company text in sync when a name changes
     conn.execute(
         r#"
         CREATE TRIGGER IF NOT EXISTS tr_orders_sync_company_name
@@ -172,13 +183,29 @@ fn ensure_schema(conn: &Connection) -> Result<(), rusqlite::Error> {
         [],
     )?;
 
-    // Helpful index for joins/filters
+    // Helpful indexes
     conn.execute(
         r#"CREATE INDEX IF NOT EXISTS idx_orders_delivery_company_id ON orders(delivery_company_id)"#,
         [],
     )?;
+    conn.execute(
+        r#"CREATE INDEX IF NOT EXISTS idx_orders_article_name ON orders(article_name)"#,
+        [],
+    )?;
 
-    // --- existing migrations you already had ---
+    // --- settings (key/value) ---
+    conn.execute(
+        r#"
+        CREATE TABLE IF NOT EXISTS settings (
+          key TEXT PRIMARY KEY,
+          value TEXT NOT NULL,
+          updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+        )
+        "#,
+        [],
+    )?;
+
+    // Existing migrations (no-ops if already applied)
     if let Err(e) = conn.execute(
         r#"ALTER TABLE orders ADD COLUMN article_name TEXT NOT NULL DEFAULT ''"#,
         [],
@@ -194,14 +221,8 @@ fn ensure_schema(conn: &Connection) -> Result<(), rusqlite::Error> {
         if !msg.contains("duplicate column") { return Err(e); }
     }
 
-    conn.execute(
-        r#"CREATE INDEX IF NOT EXISTS idx_orders_article_name ON orders(article_name)"#,
-        [],
-    )?;
-
     Ok(())
 }
-
 
 // Escape LIKE wildcards (_ % \) for use with ESCAPE '\'
 fn escape_like(input: &str) -> String {
@@ -211,18 +232,18 @@ fn escape_like(input: &str) -> String {
         .replace('_', r#"\_"#)
 }
 
+// Create (if needed) and fetch a delivery company id + canonicalized name
 fn get_or_create_delivery_company(
     conn: &Connection,
     name: &str,
 ) -> Result<(i64, String), rusqlite::Error> {
     let trimmed = name.trim();
-    // ensure row exists (name is UNIQUE NOCASE)
-    conn.execute(
-        r#"INSERT OR IGNORE INTO delivery_companies(name) VALUES (TRIM(?1))"#,
-        params![trimmed],
-    )?;
-
-    // fetch canonical row (id + stored-cased name)
+    if !trimmed.is_empty() {
+        conn.execute(
+            r#"INSERT OR IGNORE INTO delivery_companies(name) VALUES (TRIM(?1))"#,
+            params![trimmed],
+        )?;
+    }
     let mut stmt = conn.prepare(
         r#"SELECT id, name FROM delivery_companies WHERE name = ?1 COLLATE NOCASE"#,
     )?;
@@ -230,6 +251,7 @@ fn get_or_create_delivery_company(
         stmt.query_row([trimmed], |row| Ok((row.get(0)?, row.get(1)?)))?;
     Ok((id, stored_name))
 }
+
 // ---------- Commands ----------
 
 #[tauri::command]
@@ -237,15 +259,23 @@ fn greet(name: &str) -> String {
     format!("Hello, {}! You've been greeted from Rust!", name)
 }
 
+// --- Orders ---
+
 #[tauri::command]
 fn save_order(state: tauri::State<AppState>, order: NewOrderInput) -> Result<i64, String> {
     let conn = Connection::open(&state.db_path).map_err(|e| e.to_string())?;
     ensure_schema(&conn).map_err(|e| e.to_string())?;
+
+    let (company_id, company_name) =
+        get_or_create_delivery_company(&conn, &order.delivery_company).map_err(|e| e.to_string())?;
+
     conn.execute(
         r#"
         INSERT INTO orders
-          (client_name, article_name, phone, city, address, delivery_company, delivery_date, description)
-        VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)
+          (client_name, article_name, phone, city, address,
+           delivery_company, delivery_company_id, delivery_date, description)
+        VALUES (?1, ?2, ?3, ?4, ?5,
+                ?6, ?7, ?8, ?9)
         "#,
         params![
             order.client_name,
@@ -253,7 +283,8 @@ fn save_order(state: tauri::State<AppState>, order: NewOrderInput) -> Result<i64
             order.phone,
             order.city,
             order.address,
-            order.delivery_company,
+            company_name,      // normalized display name
+            company_id,        // FK
             order.delivery_date,
             order.description
         ],
@@ -306,6 +337,10 @@ fn update_order(
 ) -> Result<(), String> {
     let conn = Connection::open(&state.db_path).map_err(|e| e.to_string())?;
     ensure_schema(&conn).map_err(|e| e.to_string())?;
+
+    let (company_id, company_name) =
+        get_or_create_delivery_company(&conn, &order.delivery_company).map_err(|e| e.to_string())?;
+
     conn.execute(
         r#"
         UPDATE orders SET
@@ -315,9 +350,10 @@ fn update_order(
           city = ?4,
           address = ?5,
           delivery_company = ?6,
-          delivery_date = ?7,
-          description = ?8
-        WHERE id = ?9
+          delivery_company_id = ?7,
+          delivery_date = ?8,
+          description = ?9
+        WHERE id = ?10
         "#,
         params![
             order.client_name,
@@ -325,7 +361,8 @@ fn update_order(
             order.phone,
             order.city,
             order.address,
-            order.delivery_company,
+            company_name,      // normalized display name
+            company_id,        // FK
             order.delivery_date,
             order.description,
             id
@@ -479,7 +516,7 @@ fn remove_opened_order(state: tauri::State<AppState>, id: i64) -> Result<(), Str
     Ok(())
 }
 
-// --- new commands ---
+// --- Search helpers ---
 
 #[tauri::command]
 fn search_article_names(
@@ -549,6 +586,122 @@ fn get_latest_description_for_article(
     Ok(desc)
 }
 
+// --- Delivery companies (used by Settings.tsx) ---
+
+#[tauri::command]
+fn list_delivery_companies(state: tauri::State<AppState>) -> Result<Vec<DeliveryCompany>, String> {
+    let conn = Connection::open(&state.db_path).map_err(|e| e.to_string())?;
+    ensure_schema(&conn).map_err(|e| e.to_string())?;
+
+    let mut stmt = conn
+        .prepare(
+            r#"
+            SELECT id, name, active
+            FROM delivery_companies
+            ORDER BY active DESC, name ASC
+            "#,
+        )
+        .map_err(|e| e.to_string())?;
+
+    let rows = stmt
+        .query_map([], |row| {
+            Ok(DeliveryCompany {
+                id: row.get(0)?,
+                name: row.get(1)?,
+                active: row.get(2)?,
+            })
+        })
+        .map_err(|e| e.to_string())?;
+
+    let mut out = Vec::new();
+    for r in rows { out.push(r.map_err(|e| e.to_string())?); }
+    Ok(out)
+}
+
+#[tauri::command]
+fn add_delivery_company(state: tauri::State<AppState>, name: String) -> Result<i64, String> {
+    let conn = Connection::open(&state.db_path).map_err(|e| e.to_string())?;
+    ensure_schema(&conn).map_err(|e| e.to_string())?;
+
+    conn.execute(
+        r#"INSERT OR IGNORE INTO delivery_companies(name) VALUES (TRIM(?1))"#,
+        params![name],
+    ).map_err(|e| e.to_string())?;
+
+    let mut stmt = conn
+        .prepare(r#"SELECT id FROM delivery_companies WHERE name = ?1 COLLATE NOCASE"#)
+        .map_err(|e| e.to_string())?;
+    let id: i64 = stmt.query_row([name], |row| row.get(0)).map_err(|e| e.to_string())?;
+    Ok(id)
+}
+
+#[tauri::command]
+fn set_delivery_company_active(
+    state: tauri::State<AppState>,
+    id: i64,
+    active: bool,
+) -> Result<(), String> {
+    let conn = Connection::open(&state.db_path).map_err(|e| e.to_string())?;
+    ensure_schema(&conn).map_err(|e| e.to_string())?;
+    conn.execute(
+        r#"UPDATE delivery_companies SET active = ?1 WHERE id = ?2"#,
+        params![active, id],
+    ).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
+fn rename_delivery_company(
+    state: tauri::State<AppState>,
+    id: i64,
+    new_name: String,
+) -> Result<(), String> {
+    let conn = Connection::open(&state.db_path).map_err(|e| e.to_string())?;
+    ensure_schema(&conn).map_err(|e| e.to_string())?;
+    conn.execute(
+        r#"UPDATE delivery_companies SET name = TRIM(?1) WHERE id = ?2"#,
+        params![new_name, id],
+    ).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+// --- Settings (used by Settings.tsx) ---
+
+#[tauri::command]
+fn get_setting(state: tauri::State<AppState>, key: String) -> Result<Option<String>, String> {
+    let conn = Connection::open(&state.db_path).map_err(|e| e.to_string())?;
+    ensure_schema(&conn).map_err(|e| e.to_string())?;
+
+    let mut stmt = conn
+        .prepare(r#"SELECT value FROM settings WHERE key = ?1"#)
+        .map_err(|e| e.to_string())?;
+
+    let value: Option<String> = stmt
+        .query_row([key], |row| row.get::<_, String>(0))
+        .optional()
+        .map_err(|e| e.to_string())?;
+
+    Ok(value)
+}
+
+#[tauri::command]
+fn set_setting(state: tauri::State<AppState>, key: String, value: String) -> Result<(), String> {
+    let conn = Connection::open(&state.db_path).map_err(|e| e.to_string())?;
+    ensure_schema(&conn).map_err(|e| e.to_string())?;
+
+    conn.execute(
+        r#"
+        INSERT INTO settings (key, value, updated_at)
+        VALUES (?1, ?2, strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+        ON CONFLICT(key) DO UPDATE SET
+          value = excluded.value,
+          updated_at = excluded.updated_at
+        "#,
+        params![key, value],
+    ).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
 // ---------- Run ----------
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -568,17 +721,28 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             greet,
+            // orders
             save_order,
             get_order,
             update_order,
             set_order_done,
             delete_order,
             list_orders,
+            // opened stack
             open_order,
             get_opened_orders,
             remove_opened_order,
+            // search helpers
             search_article_names,
-            get_latest_description_for_article
+            get_latest_description_for_article,
+            // delivery companies (Settings.tsx)
+            list_delivery_companies,
+            add_delivery_company,
+            set_delivery_company_active,
+            rename_delivery_company,
+            // settings (Settings.tsx)
+            get_setting,
+            set_setting,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
