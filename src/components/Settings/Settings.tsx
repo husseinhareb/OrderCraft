@@ -1,13 +1,567 @@
-// /src/components/OrderForm/OrderForm.tsx
-import { type FC } from "react";
+import { type FC, useEffect, useMemo, useState } from "react";
+import { styled } from "styled-components";
+import { invoke } from "@tauri-apps/api/core";
 
+// ---------- Types ----------
+type ThemeChoice = "system" | "light" | "dark";
 
+type DeliveryCompany = {
+  id: number;
+  name: string;
+  active: boolean;
+};
 
+// ---------- Helpers ----------
+async function getSetting(key: string) {
+  try {
+    // Rust returns Option<String> -> null or string here
+    return (await invoke<string | null>("get_setting", { key })) ?? null;
+  } catch {
+    return null;
+  }
+}
+
+async function setSetting(key: string, value: string) {
+  await invoke("set_setting", { key, value });
+}
+
+function applyTheme(choice: ThemeChoice) {
+  const root = document.documentElement;
+  if (choice === "system") {
+    root.removeAttribute("data-theme");
+  } else {
+    root.setAttribute("data-theme", choice);
+  }
+}
+
+// ---------- Component ----------
 const Settings: FC = () => {
+  const [activeTab, setActiveTab] = useState<"general" | "theme" | "companies">("general");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
+  // General
+  const [defaultCity, setDefaultCity] = useState("");
+  const [confettiOnDone, setConfettiOnDone] = useState(true);
+  const [defaultCompanyName, setDefaultCompanyName] = useState("");
+
+  // Theme
+  const [theme, setTheme] = useState<ThemeChoice>("system");
+
+  // Companies
+  const [companies, setCompanies] = useState<DeliveryCompany[]>([]);
+  const [newCompany, setNewCompany] = useState("");
+
+  const sortedCompanies = useMemo(
+    () =>
+      [...companies].sort((a, b) =>
+        a.active === b.active ? a.name.localeCompare(b.name) : Number(b.active) - Number(a.active)
+      ),
+    [companies]
+  );
+
+  // Initial load
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        setLoading(true);
+        setError(null);
+
+        const [themeVal, cityVal, confettiVal, defCompanyVal, list] = await Promise.all([
+          getSetting("theme"),
+          getSetting("defaultCity"),
+          getSetting("confettiOnDone"),
+          getSetting("defaultDeliveryCompany"),
+          invoke<DeliveryCompany[]>("list_delivery_companies"),
+        ]);
+
+        if (!mounted) return;
+
+        const t = (themeVal as ThemeChoice) || "system";
+        setTheme(t);
+        applyTheme(t);
+
+        setDefaultCity(cityVal || "");
+        setConfettiOnDone((confettiVal ?? "true") !== "false");
+        setDefaultCompanyName(defCompanyVal || "");
+        setCompanies(list);
+      } catch (e: any) {
+        setError(e?.message || "Failed to load settings.");
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  // Handlers — General
+  const saveGeneral = async () => {
+    try {
+      await Promise.all([
+        setSetting("defaultCity", defaultCity.trim()),
+        setSetting("confettiOnDone", confettiOnDone ? "true" : "false"),
+        setSetting("defaultDeliveryCompany", defaultCompanyName.trim()),
+      ]);
+    } catch (e: any) {
+      setError(e?.message || "Failed to save general settings.");
+    }
+  };
+
+  // Handlers — Theme
+  const saveTheme = async () => {
+    try {
+      await setSetting("theme", theme);
+      applyTheme(theme);
+    } catch (e: any) {
+      setError(e?.message || "Failed to save theme.");
+    }
+  };
+
+  // Handlers — Companies
+  const refreshCompanies = async () => {
+    const list = await invoke<DeliveryCompany[]>("list_delivery_companies");
+    setCompanies(list);
+  };
+
+  const addCompany = async () => {
+    const name = newCompany.trim();
+    if (!name) return;
+    try {
+      await invoke<number>("add_delivery_company", { name });
+      setNewCompany("");
+      await refreshCompanies();
+      if (!defaultCompanyName) setDefaultCompanyName(name);
+    } catch (e: any) {
+      setError(e?.message || "Failed to add company.");
+    }
+  };
+
+  const toggleActive = async (id: number, next: boolean) => {
+    try {
+      await invoke("set_delivery_company_active", { id, active: next });
+      await refreshCompanies();
+    } catch (e: any) {
+      setError(e?.message || "Failed to update company status.");
+    }
+  };
+
+  const renameCompany = async (id: number, newName: string) => {
+    const name = newName.trim();
+    if (!name) return;
+    try {
+      await invoke("rename_delivery_company", { id, newName: name });
+      await refreshCompanies();
+      if (defaultCompanyName && defaultCompanyName.toLowerCase() === name.toLowerCase()) {
+        setDefaultCompanyName(name); // ensure canonical casing
+      }
+    } catch (e: any) {
+      setError(e?.message || "Failed to rename company.");
+    }
+  };
+
+  // UI
   return (
-    <></>
+    <Wrap>
+      <Sidebar role="tablist" aria-orientation="vertical">
+        <TabButton
+          role="tab"
+          aria-selected={activeTab === "general"}
+          onClick={() => setActiveTab("general")}
+        >
+          General
+        </TabButton>
+        <TabButton
+          role="tab"
+          aria-selected={activeTab === "theme"}
+          onClick={() => setActiveTab("theme")}
+        >
+          Theme
+        </TabButton>
+        <TabButton
+          role="tab"
+          aria-selected={activeTab === "companies"}
+          onClick={() => setActiveTab("companies")}
+        >
+          Delivery companies
+        </TabButton>
+      </Sidebar>
+
+      <Content>
+        {loading && <Muted>Loading settings…</Muted>}
+        {error && <Error role="alert">{error}</Error>}
+
+        {!loading && activeTab === "general" && (
+          <Section aria-labelledby="general-title">
+            <SectionTitle id="general-title">General</SectionTitle>
+
+            <Field>
+              <Label htmlFor="defaultCity">Default city</Label>
+              <Input
+                id="defaultCity"
+                value={defaultCity}
+                onChange={(e) => setDefaultCity(e.target.value)}
+                placeholder="e.g., Paris"
+              />
+            </Field>
+
+            <Field>
+              <CheckboxLabel>
+                <input
+                  type="checkbox"
+                  checked={confettiOnDone}
+                  onChange={(e) => setConfettiOnDone(e.target.checked)}
+                />
+                <span>Celebrate with confetti when marking orders as done</span>
+              </CheckboxLabel>
+            </Field>
+
+            <Field>
+              <Label htmlFor="defaultCompany">Default delivery company</Label>
+              <Select
+                id="defaultCompany"
+                value={defaultCompanyName}
+                onChange={(e) => setDefaultCompanyName(e.target.value)}
+              >
+                <option value="">— None —</option>
+                {sortedCompanies.map((c) => (
+                  <option key={c.id} value={c.name}>
+                    {c.name} {c.active ? "" : "(inactive)"}
+                  </option>
+                ))}
+              </Select>
+              <Small>Used to prefill new orders.</Small>
+            </Field>
+
+            <Actions>
+              <PrimaryButton onClick={saveGeneral}>Save general</PrimaryButton>
+            </Actions>
+          </Section>
+        )}
+
+        {!loading && activeTab === "theme" && (
+          <Section aria-labelledby="theme-title">
+            <SectionTitle id="theme-title">Theme</SectionTitle>
+
+            <RadioRow>
+              <RadioItem>
+                <input
+                  id="theme-system"
+                  type="radio"
+                  name="theme"
+                  checked={theme === "system"}
+                  onChange={() => setTheme("system")}
+                />
+                <label htmlFor="theme-system">System</label>
+              </RadioItem>
+              <RadioItem>
+                <input
+                  id="theme-light"
+                  type="radio"
+                  name="theme"
+                  checked={theme === "light"}
+                  onChange={() => setTheme("light")}
+                />
+                <label htmlFor="theme-light">Light</label>
+              </RadioItem>
+              <RadioItem>
+                <input
+                  id="theme-dark"
+                  type="radio"
+                  name="theme"
+                  checked={theme === "dark"}
+                  onChange={() => setTheme("dark")}
+                />
+                <label htmlFor="theme-dark">Dark</label>
+              </RadioItem>
+            </RadioRow>
+
+            <Actions>
+              <PrimaryButton onClick={saveTheme}>Save theme</PrimaryButton>
+            </Actions>
+          </Section>
+        )}
+
+        {!loading && activeTab === "companies" && (
+          <Section aria-labelledby="companies-title">
+            <SectionTitle id="companies-title">Delivery companies</SectionTitle>
+
+            <AddRow onSubmit={(e) => { e.preventDefault(); addCompany(); }}>
+              <Input
+                value={newCompany}
+                onChange={(e) => setNewCompany(e.target.value)}
+                placeholder="Add a company…"
+                aria-label="New company name"
+              />
+              <PrimaryButton type="submit">Add</PrimaryButton>
+            </AddRow>
+
+            <List>
+              {sortedCompanies.map((c) => (
+                <CompanyRow key={c.id}>
+                  <InlineEditName
+                    defaultValue={c.name}
+                    onSubmit={(val) => renameCompany(c.id, val)}
+                  />
+                  <Spacer />
+                  <Tag data-variant={c.active ? "ok" : "muted"}>
+                    {c.active ? "Active" : "Inactive"}
+                  </Tag>
+                  <SmallButton onClick={() => toggleActive(c.id, !c.active)}>
+                    {c.active ? "Deactivate" : "Activate"}
+                  </SmallButton>
+                </CompanyRow>
+              ))}
+              {sortedCompanies.length === 0 && <Muted>No companies yet.</Muted>}
+            </List>
+          </Section>
+        )}
+      </Content>
+    </Wrap>
   );
 };
 
 export default Settings;
+
+// ---------- Small inline editable input ----------
+const InlineEditName: FC<{ defaultValue: string; onSubmit: (v: string) => void }> = ({
+  defaultValue,
+  onSubmit,
+}) => {
+  const [val, setVal] = useState(defaultValue);
+  const [editing, setEditing] = useState(false);
+
+  useEffect(() => setVal(defaultValue), [defaultValue]);
+
+  const commit = () => {
+    const trimmed = val.trim();
+    if (trimmed && trimmed !== defaultValue) onSubmit(trimmed);
+    setEditing(false);
+  };
+
+  return (
+    <InlineWrap>
+      {editing ? (
+        <>
+          <Input
+            value={val}
+            onChange={(e) => setVal(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") { e.preventDefault(); commit(); }
+              if (e.key === "Escape") { e.preventDefault(); setVal(defaultValue); setEditing(false); }
+            }}
+            autoFocus
+            aria-label="Company name"
+          />
+          <SmallButton onClick={commit}>Save</SmallButton>
+          <SmallButton data-variant="ghost" onClick={() => { setVal(defaultValue); setEditing(false); }}>
+            Cancel
+          </SmallButton>
+        </>
+      ) : (
+        <>
+          <Name>{defaultValue}</Name>
+          <SmallButton onClick={() => setEditing(true)}>Rename</SmallButton>
+        </>
+      )}
+    </InlineWrap>
+  );
+};
+
+// ---------- Styles ----------
+const Wrap = styled.div`
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  gap: 12px;
+  min-height: 60vh;
+
+  @media (max-width: 720px) {
+    grid-template-columns: 1fr;
+  }
+`;
+
+const Sidebar = styled.nav`
+  border: 1px solid #000;
+  border-radius: 12px;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  background: #fff;
+
+  @media (max-width: 720px) {
+    flex-direction: row;
+    overflow: auto;
+  }
+`;
+
+const TabButton = styled.button`
+  padding: 10px 12px;
+  border: 1px solid #000;
+  border-radius: 10px;
+  background: #fff;
+  cursor: pointer;
+  text-align: left;
+
+  &[aria-selected="true"] {
+    background: #000;
+    color: #fff;
+  }
+
+  @media (max-width: 720px) {
+    white-space: nowrap;
+  }
+`;
+
+const Content = styled.div`
+  border: 1px solid #000;
+  border-radius: 12px;
+  padding: 12px;
+  background: #fff;
+  min-height: 60vh;
+`;
+
+const Section = styled.section`
+  display: grid;
+  gap: 16px;
+`;
+
+const SectionTitle = styled.h3`
+  margin: 0 0 4px 0;
+`;
+
+const Field = styled.div`
+  display: grid;
+  gap: 6px;
+  max-width: 520px;
+`;
+
+const Label = styled.label`
+  font-weight: 600;
+`;
+
+const Input = styled.input`
+  border: 1px solid #000;
+  border-radius: 8px;
+  padding: 8px 10px;
+  width: 100%;
+  background: #fff;
+`;
+
+const Select = styled.select`
+  border: 1px solid #000;
+  border-radius: 8px;
+  padding: 8px 10px;
+  width: 100%;
+  background: #fff;
+`;
+
+const CheckboxLabel = styled.label`
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+
+  input { transform: translateY(1px); }
+`;
+
+const Actions = styled.div`
+  display: flex;
+  gap: 8px;
+`;
+
+const PrimaryButton = styled.button`
+  padding: 8px 12px;
+  border: 1px solid #000;
+  border-radius: 8px;
+  background: #000;
+  color: #fff;
+  cursor: pointer;
+`;
+
+const SmallButton = styled.button`
+  padding: 6px 8px;
+  border: 1px solid #000;
+  border-radius: 8px;
+  background: #fff;
+  cursor: pointer;
+
+  &[data-variant="ghost"] {
+    border-color: transparent;
+    background: transparent;
+  }
+`;
+
+const Muted = styled.p`
+  color: #666;
+  margin: 6px 0;
+`;
+
+const Error = styled.p`
+  color: #c00;
+  margin: 6px 0 12px 0;
+`;
+
+const AddRow = styled.form`
+  display: flex;
+  gap: 8px;
+  max-width: 520px;
+
+  @media (max-width: 520px) {
+    flex-direction: column;
+    align-items: stretch;
+  }
+`;
+
+const List = styled.div`
+  display: grid;
+  gap: 8px;
+`;
+
+const CompanyRow = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid #000;
+  border-radius: 8px;
+  padding: 8px;
+  background: #fff;
+`;
+
+const InlineWrap = styled.div`
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+`;
+
+const Name = styled.span`
+  font-weight: 600;
+`;
+
+const Spacer = styled.div`
+  flex: 1;
+`;
+
+const Tag = styled.span`
+  border: 1px solid #000;
+  border-radius: 999px;
+  padding: 4px 8px;
+  font-size: 12px;
+  &[data-variant="muted"] { opacity: 0.6; }
+  &[data-variant="ok"] { }
+`;
+
+const RadioRow = styled.div`
+  display: flex;
+  gap: 16px;
+`;
+
+const RadioItem = styled.label`
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+`;
+
+const Small = styled.div`
+`;
