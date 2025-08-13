@@ -66,6 +66,9 @@ const OrderContent: FC = () => {
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
+  // for optimistic toggle
+  const [toggling, setToggling] = useState(false);
+
   useEffect(() => {
     let cancelled = false;
     const load = async () => {
@@ -85,8 +88,33 @@ const OrderContent: FC = () => {
       }
     };
     load();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [activeId]);
+
+  const toggleDone = async () => {
+    if (!data || toggling) return;
+    const current = !!data.done;
+    const next = !current;
+
+    // Optimistic UI update
+    setData((d) => (d ? { ...d, done: next } : d));
+    setToggling(true);
+    try {
+      await setOrderDone(data.id, next);
+      // Optionally re-fetch to stay perfectly in sync with backend:
+      // const fresh = await invoke<OrderDetail>("get_order", { id: data.id });
+      // setData(fresh);
+    } catch (e) {
+      // Roll back on failure
+      setData((d) => (d ? { ...d, done: current } : d));
+      console.error(e);
+      alert("Failed to update order status.");
+    } finally {
+      setToggling(false);
+    }
+  };
 
   if (!activeId) {
     return (
@@ -129,6 +157,7 @@ const OrderContent: FC = () => {
 
   if (!data) return null;
 
+  const done = !!data.done;
   const delivDate = formatDate(data.deliveryDate);
 
   return (
@@ -143,12 +172,13 @@ const OrderContent: FC = () => {
           <Actions>
             <ActionBtn
               type="button"
-              aria-label={data.done ? "Mark as not done" : "Mark as done"}
-              data-variant={data.done ? "outline" : "primary"}
-              onClick={() => setOrderDone(data.id, !data.done)}
-              title={data.done ? "Mark as not done" : "Mark as done"}
+              aria-label={done ? "Mark as not done" : "Mark as done"}
+              data-variant={done ? "outline" : "primary"}
+              onClick={toggleDone}
+              disabled={toggling}
+              title={done ? "Mark as not done" : "Mark as done"}
             >
-              {data.done ? "✓ Done" : "Mark done"}
+              {done ? "✓ Done" : toggling ? "Marking…" : "Mark done"}
             </ActionBtn>
 
             <ActionBtn type="button" onClick={() => openOrderFormForEdit(data.id)}>

@@ -20,6 +20,8 @@ type OrderInput = {
 
 type OrderDetail = OrderInput & { id: number };
 
+type DeliveryCompany = { id: number; name: string; active: boolean };
+
 const blank: OrderInput = {
   clientName: "", articleName: "", phone: "", city: "", address: "",
   deliveryCompany: "", deliveryDate: "", description: "",
@@ -34,6 +36,19 @@ const OrderForm: FC = () => {
   const [form, setForm] = useState<OrderInput>(blank);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Delivery companies
+  const [companies, setCompanies] = useState<DeliveryCompany[]>([]);
+  const [companiesLoading, setCompaniesLoading] = useState(false);
+  const [companiesError, setCompaniesError] = useState<string | null>(null);
+
+  const sortedCompanies = useMemo(
+    () =>
+      [...companies].sort((a, b) =>
+        a.active === b.active ? a.name.localeCompare(b.name) : Number(b.active) - Number(a.active)
+      ),
+    [companies]
+  );
 
   // Article suggestions (from DB) + debounce
   const [articleOptions, setArticleOptions] = useState<string[]>([]);
@@ -76,6 +91,40 @@ const OrderForm: FC = () => {
     if (isOpen && editingId == null) setForm(blank);
 
     return () => { cancelled = true; };
+  }, [isOpen, editingId]);
+
+  // Load delivery companies (and default selection) when opening
+  useEffect(() => {
+    if (!isOpen) return;
+    let cancelled = false;
+
+    (async () => {
+      try {
+        setCompaniesLoading(true);
+        setCompaniesError(null);
+
+        const [list, defName] = await Promise.all([
+          invoke<DeliveryCompany[]>("list_delivery_companies"),
+          invoke<string | null>("get_setting", { key: "defaultDeliveryCompany" }),
+        ]);
+
+        if (cancelled) return;
+
+        setCompanies(list);
+
+        // Prefill default only on "create new" and only if no value chosen yet
+        if (editingId == null && !form.deliveryCompany && defName) {
+          setForm((f) => ({ ...f, deliveryCompany: defName }));
+        }
+      } catch (e: any) {
+        if (!cancelled) setCompaniesError(e?.toString?.() ?? "Failed to load delivery companies");
+      } finally {
+        if (!cancelled) setCompaniesLoading(false);
+      }
+    })();
+
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, editingId]);
 
   const set = (k: keyof OrderInput) =>
@@ -277,12 +326,23 @@ const OrderForm: FC = () => {
                 required
                 autoComplete="off"
               >
-                <option value="" disabled>Select…</option>
-                <option value="DHL">DHL</option>
-                <option value="FedEx">FedEx</option>
-                <option value="UPS">UPS</option>
-                <option value="Local Post">Local Post</option>
+                <option value="" disabled>{companiesLoading ? "Loading…" : "Select…"}</option>
+
+                {sortedCompanies.map((c) => (
+                  <option key={c.id} value={c.name}>
+                    {c.name}{c.active ? "" : " (inactive)"}
+                  </option>
+                ))}
+
+                {/* If editing and the current company isn't in the list anymore, keep it selectable */}
+                {form.deliveryCompany &&
+                  !companies.some(
+                    (c) => c.name.toLowerCase() === form.deliveryCompany.toLowerCase()
+                  ) && (
+                    <option value={form.deliveryCompany}>{form.deliveryCompany}</option>
+                  )}
               </Select>
+              {companiesError && <small style={{ color: "red" }}>{companiesError}</small>}
             </Field>
 
             <Field>
