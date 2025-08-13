@@ -180,3 +180,10 @@ export const SettingsButton = styled(IconButton)`
   right: 8px;
   z-index: 1; /* above list items within the panel */
 `;
+
+export const ChartButton = styled(IconButton)`
+  position: absolute;
+  top: 8px;
+  right: 48px; /* sits to the left of the Settings button */
+  z-index: 1;
+`;

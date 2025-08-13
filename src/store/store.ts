@@ -26,9 +26,14 @@ type AppState = {
   openOrderFormForEdit: (id: number) => void;
   closeOrderForm: () => void;
 
+  /* Dashboard (Right Panel) */
+  showDashboard: boolean;
+  openDashboard: () => void;
+  closeDashboard: () => void;
+
   /* Orders */
   orders: OrderListItem[];
-  loading: boolean;         // for orders list
+  loading: boolean; // for orders list
   error: string | null;
   fetchOrders: () => Promise<void>;
   deleteOrder: (id: number) => Promise<void>;
@@ -39,8 +44,8 @@ type AppState = {
   openedLoading: boolean;
   openedError: string | null;
   fetchOpened: () => Promise<void>;
-  openInStack: (id: number) => Promise<void>;      // promote/add to top
-  closeFromStack: (id: number) => Promise<void>;   // remove from stack
+  openInStack: (id: number) => Promise<void>; // promote/add to top
+  closeFromStack: (id: number) => Promise<void>; // remove from stack
   openInStackAndEdit: (id: number) => Promise<void>;
 };
 
@@ -48,9 +53,16 @@ export const useStore = create<AppState>((set, get) => ({
   /* UI */
   isOrderFormOpen: false,
   editingOrderId: null,
-  openOrderForm: () => set({ isOrderFormOpen: true, editingOrderId: null }),
-  openOrderFormForEdit: (id) => set({ isOrderFormOpen: true, editingOrderId: id }),
+  openOrderForm: () =>
+    set({ isOrderFormOpen: true, editingOrderId: null, showDashboard: false }),
+  openOrderFormForEdit: (id) =>
+    set({ isOrderFormOpen: true, editingOrderId: id, showDashboard: false }),
   closeOrderForm: () => set({ isOrderFormOpen: false, editingOrderId: null }),
+
+  /* Dashboard (Right Panel) */
+  showDashboard: false,
+  openDashboard: () => set({ showDashboard: true, isOrderFormOpen: false, editingOrderId: null }),
+  closeDashboard: () => set({ showDashboard: false }),
 
   /* Orders */
   orders: [],
@@ -82,7 +94,7 @@ export const useStore = create<AppState>((set, get) => ({
   },
 
   setOrderDone: async (id: number, done: boolean) => {
-    // optimistic update
+    // optimistic update in the list
     set((s) => ({ orders: s.orders.map((o) => (o.id === id ? { ...o, done } : o)) }));
     try {
       await invoke("set_order_done", { id, done });
@@ -118,7 +130,11 @@ export const useStore = create<AppState>((set, get) => ({
       const existing = s.opened.find((x) => x.orderId === id);
       const top: OpenedOrder = existing
         ? { ...existing, position: 1 }
-        : { orderId: id, articleName: s.orders.find((o) => o.id === id)?.articleName ?? String(id), position: 1 };
+        : {
+            orderId: id,
+            articleName: s.orders.find((o) => o.id === id)?.articleName ?? String(id),
+            position: 1,
+          };
       const reindexed = [top, ...rest].map((x, i) => ({ ...x, position: i + 1 }));
       return { opened: reindexed };
     });
@@ -148,6 +164,6 @@ export const useStore = create<AppState>((set, get) => ({
 
   openInStackAndEdit: async (id: number) => {
     await get().openInStack(id);
-    set({ isOrderFormOpen: true, editingOrderId: id });
+    set({ isOrderFormOpen: true, editingOrderId: id, showDashboard: false });
   },
 }));

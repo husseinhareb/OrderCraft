@@ -21,8 +21,11 @@ import {
   SettingsHeader,
   SettingsTitle,
   CloseBtn,
+  ChartButton,
 } from "./Styles/style";
 import { useStore } from "../../store/store";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faChartLine, faGear, faPlus } from "@fortawesome/free-solid-svg-icons";
 
 // Lazy-load the settings component. Path: /src/components/Settings/Settings.tsx
 const Settings = lazy(() => import("../Settings/Settings"));
@@ -42,6 +45,7 @@ const LeftPanel: FC<LeftPanelProps> = ({ open, onClose }) => {
     deleteOrder,
     setOrderDone,
     closeOrderForm,
+    openDashboard,
   } = useStore();
 
   // Show/hide Settings modal
@@ -106,6 +110,10 @@ const LeftPanel: FC<LeftPanelProps> = ({ open, onClose }) => {
     closeOrderForm?.();
     setShowSettings(true);
   };
+  const handleOpenDashboard = () => {
+    closeOrderForm?.();
+    openDashboard(); // ⬅️ flips the right panel into Dashboard mode
+  };
   const handleCloseSettings = () => setShowSettings(false);
 
   const settingsTitleId = "settings-title";
@@ -114,13 +122,21 @@ const LeftPanel: FC<LeftPanelProps> = ({ open, onClose }) => {
     <>
       <Container id="left-menu" className="left-panel" $open={open}>
         {/* Header with Settings button */}
+        <ChartButton
+          type="button"
+          onClick={handleOpenDashboard}
+          aria-label="Open dashboard"
+          title="Dashboard"
+        >
+          <FontAwesomeIcon icon={faChartLine} />
+        </ChartButton>
         <SettingsButton
           type="button"
           onClick={handleOpenSettings}
           aria-label="Open settings"
           title="Settings"
         >
-          ⚙︎
+          <FontAwesomeIcon icon={faGear} />
         </SettingsButton>
 
         <OrdersList>
@@ -208,7 +224,7 @@ const LeftPanel: FC<LeftPanelProps> = ({ open, onClose }) => {
         </OrdersList>
 
         <PlusButton type="button" aria-label="Add order" title="Add order" onClick={openOrderForm}>
-          +
+          <FontAwesomeIcon icon={faPlus} />
         </PlusButton>
       </Container>
 
