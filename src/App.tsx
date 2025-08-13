@@ -3,6 +3,8 @@ import { useState } from "react";
 import "./App.css";
 import LeftPanel from "./components/LeftPanel/LeftPanel";
 import RightPanel from "./components/RightPanel/RightPanel";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faBars } from "@fortawesome/free-solid-svg-icons";
 
 export default function App() {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -18,9 +20,7 @@ export default function App() {
         aria-expanded={menuOpen}
         onClick={() => setMenuOpen((v) => !v)}
       >
-        <span />
-        <span />
-        <span />
+        <FontAwesomeIcon icon={faBars}/>
       </button>
     </div>
   );

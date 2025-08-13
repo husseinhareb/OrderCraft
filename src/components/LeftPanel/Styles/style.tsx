@@ -138,14 +138,13 @@ export const SettingsOverlay = styled.div`
 
 export const SettingsModal = styled.div`
   position: fixed;
-  top: 8vh;
+  top: 50%;
   left: 50%;
-  transform: translateX(-50%);
-  width: min(820px, 92vw);
-  max-height: 84vh;
+  transform: translate(-50%, -50%);
+  width: 95vw;
+  height: 95vh;
   overflow: auto;
   background: var(--panel-bg, #fff);
-  border-radius: 16px;
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
   padding: 16px;
   z-index: 1310;
@@ -174,4 +173,10 @@ export const CloseBtn = styled.button`
   &:hover {
     background: rgba(0, 0, 0, 0.06);
   }
+`;
+export const SettingsButton = styled(IconButton)`
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 1; /* above list items within the panel */
 `;

@@ -12,6 +12,7 @@ import {
   RowTitle,
   RowActions,
   IconButton,
+  SettingsButton,
   CheckContainer,
   CheckOrder,
   CheckLabel,
@@ -113,19 +114,14 @@ const LeftPanel: FC<LeftPanelProps> = ({ open, onClose }) => {
     <>
       <Container id="left-menu" className="left-panel" $open={open}>
         {/* Header with Settings button */}
-        <Row aria-label="Panel header" style={{ padding: "8px 12px" }}>
-          <RowTitle>Orders</RowTitle>
-          <RowActions>
-            <IconButton
-              type="button"
-              onClick={handleOpenSettings}
-              aria-label="Open settings"
-              title="Settings"
-            >
-              ⚙︎
-            </IconButton>
-          </RowActions>
-        </Row>
+        <SettingsButton
+          type="button"
+          onClick={handleOpenSettings}
+          aria-label="Open settings"
+          title="Settings"
+        >
+          ⚙︎
+        </SettingsButton>
 
         <OrdersList>
           {loading && <li>Loading…</li>}
