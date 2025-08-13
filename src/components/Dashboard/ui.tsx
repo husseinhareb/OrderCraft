@@ -77,37 +77,87 @@ export const MiniBars: FC<{ data: { label: string; value: number }[]; height?: n
   );
 };
 
-export const Heatmap: FC<{ cells: { weekday: number; hour: number; count: number }[] }> = ({ cells }) => {
+export const Heatmap: React.FC<{
+  cells: { weekday: number; hour: number; count: number }[];
+  minCell?: number;   // px floor for tiny screens
+  labelCol?: number;  // px width for weekday column
+  gap?: number;       // px gap
+}> = ({ cells, minCell = 10, labelCol = 40, gap = 4 }) => {
+  const wrapRef = React.useRef<HTMLDivElement>(null);
+  const [wrapW, setWrapW] = React.useState<number>(0);
+
+  React.useEffect(() => {
+    if (!wrapRef.current) return;
+    const ro = new ResizeObserver((entries) => {
+      const w = entries[0]?.contentRect.width ?? 0;
+      setWrapW(w);
+    });
+    ro.observe(wrapRef.current);
+    return () => ro.disconnect();
+  }, []);
+
+  // compute per-cell size to *fit* container width
+  const cols = 25; // 1 label + 24 hours
+  const gapsX = gap * (cols - 1);
+  const usable = Math.max(0, wrapW - gapsX - labelCol);
+  const cell = Math.max(minCell, Math.floor(usable / 24));
+  const gridWidthPx = labelCol + 24 * cell + gapsX;
+  const needsScroll = cell === minCell && gridWidthPx > wrapW;
+
+  // aggregate counts + max
   const map = new Map<string, number>();
   let max = 1;
-  cells.forEach((c) => {
+  for (const c of cells) {
     const k = `${c.weekday}-${c.hour}`;
-    map.set(k, (map.get(k) || 0) + c.count);
-    if ((map.get(k) || 0) > max) max = map.get(k)!;
-  });
+    const v = (map.get(k) || 0) + c.count;
+    map.set(k, v);
+    if (v > max) max = v;
+  }
   const labelDay = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "40px repeat(24, 1fr)", gap: 4 }}>
-      <div />
-      {Array.from({ length: 24 }).map((_, h) => (
-        <div key={`h${h}`} style={{ textAlign: "center", fontSize: 10 }}>{h}</div>
-      ))}
-      {Array.from({ length: 7 }).map((_, d) => (
-        <React.Fragment key={`r${d}`}>
-          <div style={{ fontSize: 12, opacity: 0.7, alignSelf: "center" }}>{labelDay[d]}</div>
-          {Array.from({ length: 24 }).map((_, h) => {
-            const v = map.get(`${d}-${h}`) || 0;
-            const alpha = v === 0 ? 0.06 : 0.15 + 0.85 * (v / max);
-            return (
-              <div
-                key={`${d}-${h}`}
-                title={`${labelDay[d]} ${h}:00 → ${v}`}
-                style={{ aspectRatio: "1 / 1", borderRadius: 4, background: `rgba(17,17,17,${alpha.toFixed(3)})` }}
-              />
-            );
-          })}
-        </React.Fragment>
-      ))}
+    <div ref={wrapRef} style={{ width: "100%", overflowX: needsScroll ? "auto" : "hidden" }}>
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: `${labelCol}px repeat(24, ${cell}px)`,
+          gap,
+          width: needsScroll ? gridWidthPx : "100%",
+          // prevent grid from stretching children beyond computed sizes
+          alignItems: "center",
+        }}
+      >
+        {/* header row */}
+        <div />
+        {Array.from({ length: 24 }).map((_, h) => (
+          <div key={`h${h}`} style={{ textAlign: "center", fontSize: 10 }}>
+            {h}
+          </div>
+        ))}
+
+        {/* rows */}
+        {Array.from({ length: 7 }).map((_, d) => (
+          <React.Fragment key={`r${d}`}>
+            <div style={{ fontSize: 12, opacity: 0.7 }}>{labelDay[d]}</div>
+            {Array.from({ length: 24 }).map((_, h) => {
+              const v = map.get(`${d}-${h}`) || 0;
+              const alpha = v === 0 ? 0.06 : 0.15 + 0.85 * (v / max);
+              return (
+                <div
+                  key={`${d}-${h}`}
+                  title={`${labelDay[d]} ${h}:00 → ${v}`}
+                  style={{
+                    width: cell,
+                    height: cell, // square, computed from container width
+                    borderRadius: 4,
+                    background: `rgba(17,17,17,${alpha.toFixed(3)})`,
+                  }}
+                />
+              );
+            })}
+          </React.Fragment>
+        ))}
+      </div>
     </div>
   );
 };
