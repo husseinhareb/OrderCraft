@@ -70,8 +70,11 @@ const LeftPanel: FC<LeftPanelProps> = ({ open, onClose }) => {
 
   const openContent = (id: number) => {
     closeOrderForm?.();
-    useStore.getState().openInStack(id);
+    const { closeDashboard, openInStack } = useStore.getState();
+    closeDashboard?.();           // ✅ ensure right panel exits dashboard mode
+    openInStack(id);
   };
+
 
   const handleDelete = async (id: number) => {
     if (confirm("Delete this order?")) {
@@ -108,6 +111,7 @@ const LeftPanel: FC<LeftPanelProps> = ({ open, onClose }) => {
 
   const handleOpenSettings = () => {
     closeOrderForm?.();
+    useStore.getState().closeDashboard?.();
     setShowSettings(true);
   };
   const handleOpenDashboard = () => {
@@ -203,7 +207,10 @@ const LeftPanel: FC<LeftPanelProps> = ({ open, onClose }) => {
                   <RowActions onClick={(e) => e.stopPropagation()}>
                     <IconButton
                       type="button"
-                      onClick={() => openOrderFormForEdit(o.id)}
+                      onClick={() => {
+                        useStore.getState().closeDashboard?.(); // ✅
+                        openOrderFormForEdit(o.id);
+                      }}
                       aria-label="Edit order"
                     >
                       Edit

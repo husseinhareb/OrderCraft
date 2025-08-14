@@ -95,15 +95,19 @@ export const BarLabel = styled.div`
 export const ScrollX = styled.div`
   width: 100%;
   overflow-x: auto;
+  display: flex;            
+  justify-content: center;  
 `;
 
 export const HeatmapOuter = styled.div`
   display: grid;
-  grid-template-columns: auto 1fr;
+  grid-template-columns: auto auto; 
   gap: 8px 12px;
   align-items: start;
-`;
 
+  width: max-content;  
+  margin: 0 auto; 
+`;
 export const HeatmapHeaderRow = styled.div<{ $cell: number; $gap: number }>`
   display: grid;
   grid-template-columns: repeat(24, ${({ $cell }) => $cell}px);

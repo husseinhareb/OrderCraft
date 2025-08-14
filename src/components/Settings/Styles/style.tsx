@@ -1,0 +1,197 @@
+import { styled } from "styled-components";
+
+// ---------- Styles ----------
+export const Wrap = styled.div`
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  gap: 12px;
+  min-height: 60vh;
+
+  @media (max-width: 720px) {
+    grid-template-columns: 1fr;
+  }
+`;
+
+export const Sidebar = styled.nav`
+  border: 1px solid #000;
+  border-radius: 12px;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  background: #fff;
+
+  @media (max-width: 720px) {
+    flex-direction: row;
+    overflow: auto;
+  }
+`;
+
+export const TabButton = styled.button`
+  padding: 10px 12px;
+  border: 1px solid #000;
+  border-radius: 10px;
+  background: #fff;
+  cursor: pointer;
+  text-align: left;
+
+  &[aria-selected="true"] {
+    background: #000;
+    color: #fff;
+  }
+
+  @media (max-width: 720px) {
+    white-space: nowrap;
+  }
+`;
+
+export const Content = styled.div`
+  border: 1px solid #000;
+  border-radius: 12px;
+  padding: 12px;
+  background: #fff;
+  min-height: 60vh;
+`;
+
+export const Section = styled.section`
+  display: grid;
+  gap: 16px;
+`;
+
+export const SectionTitle = styled.h3`
+  margin: 0 0 4px 0;
+`;
+
+export const Field = styled.div`
+  display: grid;
+  gap: 6px;
+  max-width: 520px;
+`;
+
+export const Label = styled.label`
+  font-weight: 600;
+`;
+
+export const Input = styled.input`
+  border: 1px solid #000;
+  border-radius: 8px;
+  padding: 8px 10px;
+  width: 100%;
+  background: #fff;
+`;
+
+export const Select = styled.select`
+  border: 1px solid #000;
+  border-radius: 8px;
+  padding: 8px 10px;
+  width: 100%;
+  background: #fff;
+`;
+
+export const CheckboxLabel = styled.label`
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+
+  input { transform: translateY(1px); }
+`;
+
+export const Actions = styled.div`
+  display: flex;
+  gap: 8px;
+`;
+
+export const PrimaryButton = styled.button`
+  padding: 8px 12px;
+  border: 1px solid #000;
+  border-radius: 8px;
+  background: #000;
+  color: #fff;
+  cursor: pointer;
+`;
+
+export const SmallButton = styled.button`
+  padding: 6px 8px;
+  border: 1px solid #000;
+  border-radius: 8px;
+  background: #fff;
+  cursor: pointer;
+
+  &[data-variant="ghost"] {
+    border-color: transparent;
+    background: transparent;
+  }
+`;
+
+export const Muted = styled.p`
+  color: #666;
+  margin: 6px 0;
+`;
+
+export const Error = styled.p`
+  color: #c00;
+  margin: 6px 0 12px 0;
+`;
+
+export const AddRow = styled.form`
+  display: flex;
+  gap: 8px;
+  max-width: 520px;
+
+  @media (max-width: 520px) {
+    flex-direction: column;
+    align-items: stretch;
+  }
+`;
+
+export const List = styled.div`
+  display: grid;
+  gap: 8px;
+`;
+
+export const CompanyRow = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid #000;
+  border-radius: 8px;
+  padding: 8px;
+  background: #fff;
+`;
+
+export const InlineWrap = styled.div`
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+`;
+
+export const Name = styled.span`
+  font-weight: 600;
+`;
+
+export const Spacer = styled.div`
+  flex: 1;
+`;
+
+export const Tag = styled.span`
+  border: 1px solid #000;
+  border-radius: 999px;
+  padding: 4px 8px;
+  font-size: 12px;
+  &[data-variant="muted"] { opacity: 0.6; }
+  &[data-variant="ok"] { }
+`;
+
+export const RadioRow = styled.div`
+  display: flex;
+  gap: 16px;
+`;
+
+export const RadioItem = styled.label`
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+`;
+
+export const Small = styled.div`
+`;
