@@ -14,6 +14,8 @@ const LeadAndTopArticles: FC<{
       <MiniBars
         data={leadBins.map((b) => ({ label: String(b.leadDays), value: b.count }))}
         height={140}
+        scroll                    // ✅ enables horizontal scrolling
+        minColPx={28}             // tweak if you want wider bars/labels
       />
     </Card>
     <Card title="Top articles">

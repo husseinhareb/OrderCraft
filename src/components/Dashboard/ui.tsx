@@ -79,24 +79,47 @@ export const MiniLine: FC<{ data: { x: string; y: number }[]; height?: number }>
 };
 
 /* ========== MiniBars ========== */
-export const MiniBars: FC<{ data: { label: string; value: number }[]; height?: number }> = ({
-    data,
-    height = 120,
-}) => {
-    if (!data.length) return <BarsGrid $cols={0} $gap={8} $height={height} />;
+export const MiniBars: FC<{
+  data: { label: string; value: number }[];
+  height?: number;
+  /** enable horizontal scroll with fixed px columns */
+  scroll?: boolean;
+  /** pixel width per column when scroll is true (default 28) */
+  minColPx?: number;
+}> = ({ data, height = 120, scroll = false, minColPx = 28 }) => {
+  if (!data.length) return <BarsGrid $cols={0} $gap={8} $height={height} />;
 
-    const max = Math.max(...data.map((d) => d.value), 1);
-    const nf = useMemo(() => new Intl.NumberFormat(), []);
-    return (
-        <BarsGrid $cols={data.length} $gap={8} $height={height}>
-            {data.map((d) => (
-                <BarCol key={d.label} title={`${d.label}: ${nf.format(d.value)}`}>
-                    <BarRect $ratio={d.value / max} />
-                    <BarLabel>{d.label}</BarLabel>
-                </BarCol>
-            ))}
-        </BarsGrid>
-    );
+  const max = Math.max(...data.map((d) => d.value), 1);
+  const nf = useMemo(() => new Intl.NumberFormat(), []);
+
+  const Grid = (
+    <BarsGrid
+      $cols={data.length}
+      $gap={8}
+      $height={height}
+      style={
+        scroll
+          ? {
+              width: "max-content",
+              gridTemplateColumns: `repeat(${data.length}, ${minColPx}px)`,
+            }
+          : undefined
+      }
+    >
+      {data.map((d) => (
+        <BarCol key={d.label} title={`${d.label}: ${nf.format(d.value)}`}>
+          <BarRect $ratio={d.value / max} />
+          <BarLabel>{d.label}</BarLabel>
+        </BarCol>
+      ))}
+    </BarsGrid>
+  );
+
+  return scroll ? (
+    <ScrollX style={{ justifyContent: "flex-start" }}>{Grid}</ScrollX>
+  ) : (
+    Grid
+  );
 };
 
 /* ========== Heatmap ========== */

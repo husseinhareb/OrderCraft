@@ -20,7 +20,7 @@ export default function App() {
         aria-expanded={menuOpen}
         onClick={() => setMenuOpen((v) => !v)}
       >
-        <FontAwesomeIcon icon={faBars}/>
+        <FontAwesomeIcon icon={faBars} style={{ fontSize: 24, margin: 0 }}/>
       </button>
     </div>
   );
