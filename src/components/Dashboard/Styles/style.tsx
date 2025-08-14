@@ -247,7 +247,8 @@ export const FlexRow = styled.div<{ $gap?: number; $align?: string; $justify?: s
 `;
 
 export const H2 = styled.h2`
-  margin: 0;
+  margin-top: 20px;
+  margin-buttom: 20px
 `;
 
 export const IconButton = styled.button`

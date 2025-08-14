@@ -6,7 +6,7 @@ use rusqlite::{params, Connection};
 use rusqlite::OptionalExtension;
 use serde::{Deserialize, Serialize};
 use tauri::Manager;
-
+use std::collections::HashMap;
 // ---------- Types sent to/returned from UI ----------
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -760,7 +760,7 @@ fn save_theme_colors(
     state: tauri::State<AppState>,
     payload: CustomThemeDTO,
 ) -> Result<(), String> {
-    let conn = Connection::open(&state.db_path).map_err(|e| e.to_string())?;
+    let mut conn = Connection::open(&state.db_path).map_err(|e| e.to_string())?;
     ensure_schema(&conn).map_err(|e| e.to_string())?;
 
     let base_norm = if payload.base.eq_ignore_ascii_case("dark") { "dark" } else { "light" };
