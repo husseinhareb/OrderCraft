@@ -79,30 +79,28 @@ export const MiniBars: FC<{ data: { label: string; value: number }[]; height?: n
 
 export const Heatmap: React.FC<{
   cells: { weekday: number; hour: number; count: number }[];
-  minCell?: number;   // px floor for tiny screens
-  labelCol?: number;  // px width for weekday column
-  gap?: number;       // px gap
-}> = ({ cells, minCell = 10, labelCol = 40, gap = 4 }) => {
-  const wrapRef = React.useRef<HTMLDivElement>(null);
-  const [wrapW, setWrapW] = React.useState<number>(0);
+  width?: number;        // total grid width in px (default 720)
+  height?: number;       // total grid height in px (default 240)
+  labelCol?: number;     // px for weekday labels
+  gap?: number;          // px gap between cells
+  headerHeight?: number; // px height for the hour header row
+}> = ({
+  cells,
+  width = 720,
+  height = 240,
+  labelCol = 48,
+  gap = 4,
+  headerHeight = 18,
+}) => {
+  // compute fixed cell size that fits both width and height
+  const cols = 25;      // 1 label + 24 hours
+  const rows = 1 + 7;   // header + 7 weekdays
+  const cellW = Math.max(8, Math.floor((width - labelCol - gap * (cols - 1)) / 24));
+  const cellH = Math.max(8, Math.floor((height - headerHeight - gap * (rows - 1)) / 7));
+  const cell = Math.min(cellW, cellH);
 
-  React.useEffect(() => {
-    if (!wrapRef.current) return;
-    const ro = new ResizeObserver((entries) => {
-      const w = entries[0]?.contentRect.width ?? 0;
-      setWrapW(w);
-    });
-    ro.observe(wrapRef.current);
-    return () => ro.disconnect();
-  }, []);
-
-  // compute per-cell size to *fit* container width
-  const cols = 25; // 1 label + 24 hours
-  const gapsX = gap * (cols - 1);
-  const usable = Math.max(0, wrapW - gapsX - labelCol);
-  const cell = Math.max(minCell, Math.floor(usable / 24));
-  const gridWidthPx = labelCol + 24 * cell + gapsX;
-  const needsScroll = cell === minCell && gridWidthPx > wrapW;
+  const gridWidthPx  = labelCol + 24 * cell + gap * (cols - 1);
+  const gridHeightPx = headerHeight + 7 * cell + gap * (rows - 1);
 
   // aggregate counts + max
   const map = new Map<string, number>();
@@ -116,29 +114,29 @@ export const Heatmap: React.FC<{
   const labelDay = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
   return (
-    <div ref={wrapRef} style={{ width: "100%", overflowX: needsScroll ? "auto" : "hidden" }}>
+    <div style={{ width: "100%", overflowX: "auto" }}>
       <div
         style={{
           display: "grid",
           gridTemplateColumns: `${labelCol}px repeat(24, ${cell}px)`,
+          gridTemplateRows: `${headerHeight}px repeat(7, ${cell}px)`,
           gap,
-          width: needsScroll ? gridWidthPx : "100%",
-          // prevent grid from stretching children beyond computed sizes
-          alignItems: "center",
+          width: gridWidthPx,
+          height: gridHeightPx,
         }}
       >
         {/* header row */}
         <div />
         {Array.from({ length: 24 }).map((_, h) => (
-          <div key={`h${h}`} style={{ textAlign: "center", fontSize: 10 }}>
+          <div key={`h${h}`} style={{ textAlign: "center", fontSize: 10, lineHeight: `${headerHeight}px` }}>
             {h}
           </div>
         ))}
 
-        {/* rows */}
+        {/* weekday rows */}
         {Array.from({ length: 7 }).map((_, d) => (
           <React.Fragment key={`r${d}`}>
-            <div style={{ fontSize: 12, opacity: 0.7 }}>{labelDay[d]}</div>
+            <div style={{ fontSize: 12, opacity: 0.7, lineHeight: `${cell}px` }}>{labelDay[d]}</div>
             {Array.from({ length: 24 }).map((_, h) => {
               const v = map.get(`${d}-${h}`) || 0;
               const alpha = v === 0 ? 0.06 : 0.15 + 0.85 * (v / max);
@@ -148,7 +146,7 @@ export const Heatmap: React.FC<{
                   title={`${labelDay[d]} ${h}:00 → ${v}`}
                   style={{
                     width: cell,
-                    height: cell, // square, computed from container width
+                    height: cell,
                     borderRadius: 4,
                     background: `rgba(17,17,17,${alpha.toFixed(3)})`,
                   }}

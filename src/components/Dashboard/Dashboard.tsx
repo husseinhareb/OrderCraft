@@ -1,6 +1,6 @@
 // src/components/Dashboard/Dashboard.tsx
 import type { FC } from "react";
-import React, { useEffect, useMemo, useState } from "react";
+import  { useEffect, useMemo, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { useStore } from "../../store/store";
 

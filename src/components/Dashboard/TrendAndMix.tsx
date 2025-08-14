@@ -11,8 +11,15 @@ const TrendAndMix: FC<{
 }> = ({ kpis, weeklySeries, companyShare90d }) => (
   <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 12 }}>
     <Card title="Orders (weekly)">
-      <MiniLine data={weeklySeries} height={120} />
-    </Card>
+  {weeklySeries.length >= 2 ? (
+    <MiniLine data={weeklySeries} height={120} />
+  ) : (
+    <MiniBars
+      data={weeklySeries.map(p => ({ label: p.x, value: p.y }))}
+      height={120}
+    />
+  )}
+</Card>
 
     <Card title="Top delivery company (last 90d)">
       {kpis.topDeliveryCompany ? (
