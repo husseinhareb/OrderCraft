@@ -3,13 +3,14 @@ import type { FC } from "react";
 import { Card, MiniBars, MiniLine } from "./ui";
 import type { Kpis, NameCount } from "./types";
 import { fmt } from "./utils";
+import { Muted, TwoCol } from "./Styles/style";
 
 const TrendAndMix: FC<{
   kpis: Kpis;
   weeklySeries: { x: string; y: number }[];
   companyShare90d: NameCount[];
 }> = ({ kpis, weeklySeries, companyShare90d }) => (
-  <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 12 }}>
+  <TwoCol>
     <Card title="Orders (weekly)">
   {weeklySeries.length >= 2 ? (
     <MiniLine data={weeklySeries} height={120} />
@@ -24,7 +25,7 @@ const TrendAndMix: FC<{
     <Card title="Top delivery company (last 90d)">
       {kpis.topDeliveryCompany ? (
         <div>
-          <div style={{ fontSize: 14, marginBottom: 8 }}>
+          <div >
             <strong>{kpis.topDeliveryCompany.name}</strong> — {fmt.format(kpis.topDeliveryCompany.count)} (
             {kpis.topDeliveryCompany.sharePct.toFixed(1)}%)
           </div>
@@ -34,10 +35,10 @@ const TrendAndMix: FC<{
           />
         </div>
       ) : (
-        <div style={{ opacity: 0.6 }}>No data in the last 90 days.</div>
+        <Muted>No data in the last 90 days.</Muted>
       )}
     </Card>
-  </div>
+  </TwoCol>
 );
 
 export default TrendAndMix;

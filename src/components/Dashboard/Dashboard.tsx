@@ -13,6 +13,7 @@ import DeliverySchedule from "./DeliverySchedule";
 import ActivityHeatmap from "./ActivityHeatmap";
 import ExceptionsTable from "./ExceptionsTable";
 import { Card } from "./ui";
+import { FlexRow, H2, IconButton } from "./Styles/style";
 
 const Dashboard: FC = () => {
   const closeDashboard = useStore((s) => s.closeDashboard);
@@ -45,10 +46,10 @@ const Dashboard: FC = () => {
 
   if (loading) {
     return (
-      <div style={{ padding: 16 }}>
+      <div >
         <Header onClose={closeDashboard} />
-        <Card style={{ marginTop: 12 }}>
-          <p style={{ margin: 0, opacity: 0.7 }}>Loading analytics…</p>
+        <Card >
+          <p >Loading analytics…</p>
         </Card>
       </div>
     );
@@ -56,9 +57,9 @@ const Dashboard: FC = () => {
 
   if (err) {
     return (
-      <div style={{ padding: 16 }}>
+      <div >
         <Header onClose={closeDashboard} />
-        <Card style={{ marginTop: 12, color: "#B00020" }}>
+        <Card >
           <strong>Error:</strong> {err}
         </Card>
       </div>
@@ -66,7 +67,7 @@ const Dashboard: FC = () => {
   }
 
   return (
-    <div style={{ padding: 16, display: "flex", flexDirection: "column", gap: 12 }}>
+    <div >
       <Header onClose={closeDashboard} />
       <KpiGrid k={data!.kpis} />
       <TrendAndMix
@@ -87,10 +88,10 @@ const Dashboard: FC = () => {
 };
 
 const Header: FC<{ onClose: () => void }> = ({ onClose }) => (
-  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-    <h2 style={{ margin: 0 }}>Dashboard</h2>
-    <button onClick={onClose} aria-label="Close dashboard">✕</button>
-  </div>
+  <FlexRow $justify="space-between" $align="center">
+    <H2>Dashboard</H2>
+    <IconButton onClick={onClose} aria-label="Close dashboard">✕</IconButton>
+  </FlexRow>
 );
 
 export default Dashboard;

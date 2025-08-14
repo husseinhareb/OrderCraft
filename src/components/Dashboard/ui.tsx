@@ -1,39 +1,62 @@
 // src/components/Dashboard/ui.tsx
-import type { FC } from "react";
-import React from "react";
+import type { FC, PropsWithChildren } from "react";
+import React, { useMemo } from "react";
+import {
+  CardContainer,
+  CardTitle,
+  KpiStack,
+  KpiLabel,
+  KpiValue,
+  KpiHint,
+  ChartSvg,
+  AxisLine,
+  LinePath,
+  Dot,
+  BarsGrid,
+  BarCol,
+  BarRect,
+  BarLabel,
+  ScrollX,
+  HeatmapOuter,
+  HeatmapHeaderRow,
+  HeatmapLabelsCol,
+  HeatmapRowLabel,
+  HeatmapAxisLabel,
+  HeatmapGrid,
+  HeatmapCell as SCell,
+  HeatmapZeroCell as SZeroCell,
+} from "./Styles/style";
 
-export const Card: FC<React.PropsWithChildren<{ title?: string; style?: React.CSSProperties }>> = ({
-  title,
-  style,
-  children,
-}) => (
-  <section
-    style={{
-      border: "1px solid #E5E5E5",
-      background: "#fff",
-      borderRadius: 12,
-      padding: 16,
-      ...style,
-    }}
-  >
-    {title ? <h3 style={{ marginTop: 0, marginBottom: 12, fontSize: 16 }}>{title}</h3> : null}
+/* ========== Card ========== */
+export const Card: FC<PropsWithChildren<{ title?: string }>> = ({ title, children }) => (
+  <CardContainer>
+    {title ? <CardTitle>{title}</CardTitle> : null}
     {children}
-  </section>
+  </CardContainer>
 );
 
-export const Kpi: FC<{ label: string; value: string | number; hint?: string }> = ({ label, value, hint }) => (
-  <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-    <div style={{ fontSize: 12, opacity: 0.7 }}>{label}</div>
-    <div style={{ fontWeight: 700, fontSize: 22 }}>{typeof value === "number" ? new Intl.NumberFormat().format(value) : value}</div>
-    {hint ? <div style={{ fontSize: 12, opacity: 0.6 }}>{hint}</div> : null}
-  </div>
+/* ========== KPI ========== */
+export const Kpi: FC<{ label: string; value: string | number; hint?: string }> = ({
+  label,
+  value,
+  hint,
+}) => (
+  <KpiStack>
+    <KpiLabel>{label}</KpiLabel>
+    <KpiValue>
+      {typeof value === "number" ? new Intl.NumberFormat().format(value) : value}
+    </KpiValue>
+    {hint ? <KpiHint>{hint}</KpiHint> : null}
+  </KpiStack>
 );
 
+/* ========== MiniLine ========== */
 export const MiniLine: FC<{ data: { x: string; y: number }[]; height?: number }> = ({
   data,
   height = 80,
 }) => {
-  if (!data.length) return <div style={{ height }} />;
+  if (!data.length) return <ChartSvg $height={height} role="img" />;
+
   const pad = 8;
   const w = Math.max(180, data.length * 24);
   const h = height;
@@ -45,43 +68,43 @@ export const MiniLine: FC<{ data: { x: string; y: number }[]; height?: number }>
   const dStr = data.map((p, i) => `${i ? "L" : "M"} ${sx(i).toFixed(2)} ${sy(p.y).toFixed(2)}`).join(" ");
 
   return (
-    <svg width="100%" height={h} viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" role="img">
-      <polyline points={`${pad},${h - pad} ${w - pad},${h - pad}`} fill="none" stroke="#eee" strokeWidth={1} />
-      <path d={dStr} fill="none" stroke="#111" strokeWidth={2} />
-      {data.map((p, i) => <circle key={i} cx={sx(i)} cy={sy(p.y)} r={2.5} />)}
-    </svg>
+    <ChartSvg $height={h} viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" role="img">
+      <AxisLine points={`${pad},${h - pad} ${w - pad},${h - pad}`} />
+      <LinePath d={dStr} />
+      {data.map((p, i) => (
+        <Dot key={i} cx={sx(i)} cy={sy(p.y)} />
+      ))}
+    </ChartSvg>
   );
 };
 
+/* ========== MiniBars ========== */
 export const MiniBars: FC<{ data: { label: string; value: number }[]; height?: number }> = ({
   data,
   height = 120,
 }) => {
-  if (!data.length) return <div style={{ height }} />;
+  if (!data.length) return <BarsGrid $cols={0} $gap={8} $height={height} />;
+
   const max = Math.max(...data.map((d) => d.value), 1);
-  const fmt = new Intl.NumberFormat();
+  const nf = useMemo(() => new Intl.NumberFormat(), []);
   return (
-    <div style={{ display: "grid", gridTemplateColumns: `repeat(${data.length}, 1fr)`, gap: 8, height }}>
+    <BarsGrid $cols={data.length} $gap={8} $height={height}>
       {data.map((d) => (
-        <div key={d.label} style={{ display: "flex", flexDirection: "column", justifyContent: "flex-end" }}>
-          <div
-            title={`${d.label}: ${fmt.format(d.value)}`}
-            style={{ height: `${(d.value / max) * 100}%`, background: "#111", borderRadius: 6, minHeight: 2 }}
-          />
-          <div style={{ textAlign: "center", fontSize: 10, marginTop: 6, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-            {d.label}
-          </div>
-        </div>
+        <BarCol key={d.label} title={`${d.label}: ${nf.format(d.value)}`}>
+          <BarRect $ratio={d.value / max} />
+          <BarLabel>{d.label}</BarLabel>
+        </BarCol>
       ))}
-    </div>
+    </BarsGrid>
   );
 };
 
+/* ========== Heatmap ========== */
 export const Heatmap: React.FC<{
   cells: { weekday: number; hour: number; count: number }[];
   width?: number;        // total grid width in px (default 720)
   height?: number;       // total grid height in px (default 240)
-  labelCol?: number;     // px for weekday labels
+  labelCol?: number;     // px used only for cell-size computation (layout uses auto)
   gap?: number;          // px gap between cells
   headerHeight?: number; // px height for the hour header row
 }> = ({
@@ -92,15 +115,12 @@ export const Heatmap: React.FC<{
   gap = 4,
   headerHeight = 18,
 }) => {
-  // compute fixed cell size that fits both width and height
-  const cols = 25;      // 1 label + 24 hours
-  const rows = 1 + 7;   // header + 7 weekdays
+  // compute fixed cell size that fits both width and height (similar to original)
+  const cols = 25; // 1 label + 24 hours
+  const rows = 1 + 7; // header + 7 weekdays
   const cellW = Math.max(8, Math.floor((width - labelCol - gap * (cols - 1)) / 24));
   const cellH = Math.max(8, Math.floor((height - headerHeight - gap * (rows - 1)) / 7));
   const cell = Math.min(cellW, cellH);
-
-  const gridWidthPx  = labelCol + 24 * cell + gap * (cols - 1);
-  const gridHeightPx = headerHeight + 7 * cell + gap * (rows - 1);
 
   // aggregate counts + max
   const map = new Map<string, number>();
@@ -114,48 +134,39 @@ export const Heatmap: React.FC<{
   const labelDay = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
   return (
-    <div style={{ width: "100%", overflowX: "auto" }}>
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: `${labelCol}px repeat(24, ${cell}px)`,
-          gridTemplateRows: `${headerHeight}px repeat(7, ${cell}px)`,
-          gap,
-          width: gridWidthPx,
-          height: gridHeightPx,
-        }}
-      >
+    <ScrollX>
+      <HeatmapOuter>
         {/* header row */}
         <div />
-        {Array.from({ length: 24 }).map((_, h) => (
-          <div key={`h${h}`} style={{ textAlign: "center", fontSize: 10, lineHeight: `${headerHeight}px` }}>
-            {h}
-          </div>
-        ))}
+        <HeatmapHeaderRow $cell={cell} $gap={gap}>
+          {Array.from({ length: 24 }).map((_, h) => (
+            <HeatmapAxisLabel key={`h${h}`} $headerH={headerHeight}>
+              {h}
+            </HeatmapAxisLabel>
+          ))}
+        </HeatmapHeaderRow>
 
-        {/* weekday rows */}
-        {Array.from({ length: 7 }).map((_, d) => (
-          <React.Fragment key={`r${d}`}>
-            <div style={{ fontSize: 12, opacity: 0.7, lineHeight: `${cell}px` }}>{labelDay[d]}</div>
-            {Array.from({ length: 24 }).map((_, h) => {
+        {/* weekday labels */}
+        <HeatmapLabelsCol>
+          {Array.from({ length: 7 }).map((_, d) => (
+            <HeatmapRowLabel key={`lbl${d}`} $cell={cell}>
+              {labelDay[d]}
+            </HeatmapRowLabel>
+          ))}
+        </HeatmapLabelsCol>
+
+        {/* grid */}
+        <HeatmapGrid $cell={cell} $gap={gap}>
+          {Array.from({ length: 7 }).map((_, d) =>
+            Array.from({ length: 24 }).map((_, h) => {
               const v = map.get(`${d}-${h}`) || 0;
               const alpha = v === 0 ? 0.06 : 0.15 + 0.85 * (v / max);
-              return (
-                <div
-                  key={`${d}-${h}`}
-                  title={`${labelDay[d]} ${h}:00 → ${v}`}
-                  style={{
-                    width: cell,
-                    height: cell,
-                    borderRadius: 4,
-                    background: `rgba(17,17,17,${alpha.toFixed(3)})`,
-                  }}
-                />
-              );
-            })}
-          </React.Fragment>
-        ))}
-      </div>
-    </div>
+              const CellComp = v === 0 ? SZeroCell : SCell;
+              return <CellComp key={`${d}-${h}`} $alpha={alpha} $cell={cell} title={`${labelDay[d]} ${h}:00 → ${v}`} />;
+            })
+          )}
+        </HeatmapGrid>
+      </HeatmapOuter>
+    </ScrollX>
   );
 };
