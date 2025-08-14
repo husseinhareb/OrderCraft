@@ -11,11 +11,10 @@ export const Container = styled.div<{ $open: boolean }>`
   height: 100%;
   background: #fff;
   transform: translateX(${(p) => (p.$open ? "0" : "-100%")});
-  /* transition: transform 0.1s ease, padding 0.1s ease, border-right 0.1s ease; */
   z-index: 1000;
   border-right: ${(p) => (p.$open ? "2px solid black" : "0")};
   padding: ${(p) => (p.$open ? "16px" : "0")};
-  overflow: hidden;
+  overflow: hidden; /* the panel itself doesn't scroll */
 `;
 
 export const Overlay = styled.div<{ $open: boolean }>`
@@ -41,12 +40,25 @@ export const PlusButton = styled.button`
 `;
 
 export const OrdersList = styled.ul`
+  /* Make only the list scrollable inside the fixed panel */
+  position: absolute;
+  top: 45px;     /* space for the top buttons */
+  right: 16px;
+  bottom: 88px;  /* clears the floating + button */
+  left: 16px;
+
   list-style: none;
-  margin: 45px 0 0 0;
-  padding: 0 0 72px 0;
+  margin: 0;
+  padding: 0;
+
   display: flex;
   flex-direction: column;
   gap: 8px;
+
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-gutter: stable;
 `;
 
 export const OrderItem = styled.li`
