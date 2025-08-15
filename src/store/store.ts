@@ -2,6 +2,24 @@
 import { create } from "zustand";
 import { invoke } from "@tauri-apps/api/core";
 
+/* ---------- Theme ---------- */
+export type ThemeName = "light" | "dark";
+
+const getInitialTheme = (): ThemeName => {
+  try {
+    if (typeof window !== "undefined") {
+      const saved = window.localStorage?.getItem("theme") as ThemeName | null;
+      if (saved === "light" || saved === "dark") return saved;
+      const prefersDark =
+        window.matchMedia?.("(prefers-color-scheme: dark)")?.matches ?? false;
+      return prefersDark ? "dark" : "light";
+    }
+  } catch {
+    // ignore and fall back
+  }
+  return "light";
+};
+
 /* ---------- Types ---------- */
 
 export type OrderListItem = {
@@ -19,6 +37,11 @@ export type OpenedOrder = {
 /* ---------- Store ---------- */
 
 type AppState = {
+  /* Theme */
+  theme: ThemeName;
+  setTheme: (t: ThemeName) => void;
+  toggleTheme: () => void;
+
   /* UI */
   isOrderFormOpen: boolean;
   editingOrderId: number | null;
@@ -50,6 +73,26 @@ type AppState = {
 };
 
 export const useStore = create<AppState>((set, get) => ({
+  /* Theme */
+  theme: getInitialTheme(),
+  setTheme: (t) => {
+    try {
+      window.localStorage?.setItem("theme", t);
+    } catch {
+      // ignore storage errors
+    }
+    set({ theme: t });
+  },
+  toggleTheme: () => {
+    const next: ThemeName = get().theme === "light" ? "dark" : "light";
+    try {
+      window.localStorage?.setItem("theme", next);
+    } catch {
+      // ignore storage errors
+    }
+    set({ theme: next });
+  },
+
   /* UI */
   isOrderFormOpen: false,
   editingOrderId: null,
@@ -61,7 +104,8 @@ export const useStore = create<AppState>((set, get) => ({
 
   /* Dashboard (Right Panel) */
   showDashboard: false,
-  openDashboard: () => set({ showDashboard: true, isOrderFormOpen: false, editingOrderId: null }),
+  openDashboard: () =>
+    set({ showDashboard: true, isOrderFormOpen: false, editingOrderId: null }),
   closeDashboard: () => set({ showDashboard: false }),
 
   /* Orders */
@@ -95,12 +139,16 @@ export const useStore = create<AppState>((set, get) => ({
 
   setOrderDone: async (id: number, done: boolean) => {
     // optimistic update in the list
-    set((s) => ({ orders: s.orders.map((o) => (o.id === id ? { ...o, done } : o)) }));
+    set((s) => ({
+      orders: s.orders.map((o) => (o.id === id ? { ...o, done } : o)),
+    }));
     try {
       await invoke("set_order_done", { id, done });
     } catch (e: any) {
       // revert on error
-      set((s) => ({ orders: s.orders.map((o) => (o.id === id ? { ...o, done: !done } : o)) }));
+      set((s) => ({
+        orders: s.orders.map((o) => (o.id === id ? { ...o, done: !done } : o)),
+      }));
       set({ error: e?.toString?.() ?? "Failed to update order status" });
     }
   },
@@ -136,7 +184,12 @@ export const useStore = create<AppState>((set, get) => ({
             position: 1,
           };
       const reindexed = [top, ...rest].map((x, i) => ({ ...x, position: i + 1 }));
-      return { opened: reindexed };
+      return {
+        opened: reindexed,
+        // keep right panel in "orders" mode whenever an order is opened
+        showDashboard: false,
+        isOrderFormOpen: s.isOrderFormOpen && s.editingOrderId === id ? s.isOrderFormOpen : s.isOrderFormOpen,
+      };
     });
 
     try {
