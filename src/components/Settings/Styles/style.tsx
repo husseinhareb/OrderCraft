@@ -74,7 +74,21 @@ export const Field = styled.div`
   gap: 6px;
   max-width: 520px;
 `;
+export const PaletteGrid = styled.div`
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  align-items: start;
 
+  @media (max-width: 640px) {
+    grid-template-columns: 1fr;
+  }
+`;
+
+/* NEW: a Field variant without the 520px cap */
+export const FieldWide = styled(Field)`
+  max-width: none;
+`;
 export const Label = styled.label`
   font-weight: 600;
 `;

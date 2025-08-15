@@ -112,7 +112,11 @@ const Settings: FC = () => {
         if (!mounted) return;
 
         // Persisted theme can be "light" | "dark" | "custom"
-        if (savedTheme === "light" || savedTheme === "dark" || savedTheme === "custom") {
+        if (
+          savedTheme === "light" ||
+          savedTheme === "dark" ||
+          savedTheme === "custom"
+        ) {
           setThemeChoice(savedTheme);
           setStoreTheme(savedTheme);
         }
@@ -161,7 +165,10 @@ const Settings: FC = () => {
     }
   };
 
-  const updateCustomColor = (key: (typeof THEME_KEYS)[number], value: string) => {
+  const updateCustomColor = (
+    key: (typeof THEME_KEYS)[number],
+    value: string
+  ) => {
     setCustomThemeLocal({ colors: { [key]: value } as any });
   };
 
@@ -354,14 +361,21 @@ const Settings: FC = () => {
                   </RadioItem>
                 </RadioRow>
 
-                {/* Editable tokens */}
-                <List>
+                {/* Editable tokens laid out in a responsive grid to avoid scrolling on wide screens */}
+                <div
+                  style={{
+                    display: "grid",
+                    gap: 12,
+                    gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
+                    alignItems: "start",
+                  }}
+                >
                   {THEME_KEYS.map((k) => {
                     const val = customTheme?.colors?.[k] ?? "";
                     const isAlpha =
                       k === "overlay" || k === "hover" || k === "softShadow";
                     return (
-                      <Field key={k}>
+                      <Field key={k} style={{ maxWidth: "none" }}>
                         <Label htmlFor={`color-${k}`}>{k}</Label>
                         {!isAlpha ? (
                           <InlineWrap>
@@ -400,7 +414,7 @@ const Settings: FC = () => {
                       </Field>
                     );
                   })}
-                </List>
+                </div>
 
                 <Muted>
                   Tip: For <code>overlay</code>, <code>hover</code>, and{" "}
