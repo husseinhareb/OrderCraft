@@ -1,19 +1,20 @@
-// Styles/style.tsx
+// /src/components/Dashboard/Styles/style.tsx
 import styled from "styled-components";
 
 /* ===== Card ===== */
 export const CardContainer = styled.section`
-  border: 1px solid #e5e5e5;
-  background: #fff;
+  border: 1px solid ${({ theme }) => theme.colors.border};
+  background: ${({ theme }) => theme.colors.surface};
   border-radius: 12px;
   padding: 16px;
+  box-shadow: 0 4px 20px ${({ theme }) => theme.colors.softShadow};
 `;
 
 export const CardTitle = styled.h3`
   margin: 0 0 12px 0;
   font-size: 16px;
   font-weight: 600;
-  color: #111;
+  color: ${({ theme }) => theme.colors.text};
 `;
 
 /* ===== KPI ===== */
@@ -25,17 +26,18 @@ export const KpiStack = styled.div`
 
 export const KpiLabel = styled.div`
   font-size: 12px;
-  opacity: 0.7;
+  color: ${({ theme }) => theme.colors.textMuted};
 `;
 
 export const KpiValue = styled.div`
   font-weight: 700;
   font-size: 22px;
+  color: ${({ theme }) => theme.colors.text};
 `;
 
 export const KpiHint = styled.div`
   font-size: 12px;
-  opacity: 0.6;
+  color: ${({ theme }) => theme.colors.textMuted};
 `;
 
 /* ===== MiniLine (SVG) ===== */
@@ -46,19 +48,19 @@ export const ChartSvg = styled.svg<{ $height: number }>`
 
 export const AxisLine = styled.polyline`
   fill: none;
-  stroke: #eeeeee;
+  stroke: ${({ theme }) => theme.colors.line};
   stroke-width: 1;
 `;
 
 export const LinePath = styled.path`
   fill: none;
-  stroke: #111111;
+  stroke: ${({ theme }) => theme.colors.text};
   stroke-width: 2;
 `;
 
 /* set r as an SVG attribute (not CSS) */
 export const Dot = styled.circle.attrs({ r: 2.5 })`
-  fill: #111111;
+  fill: ${({ theme }) => theme.colors.text};
 `;
 
 /* ===== MiniBars ===== */
@@ -77,7 +79,7 @@ export const BarCol = styled.div`
 
 export const BarRect = styled.div<{ $ratio: number }>`
   height: ${({ $ratio }) => Math.max(2, $ratio * 100)}%;
-  background: #111111;
+  background: ${({ theme }) => theme.colors.text};
   border-radius: 6px;
   min-height: 2px;
 `;
@@ -95,19 +97,20 @@ export const BarLabel = styled.div`
 export const ScrollX = styled.div`
   width: 100%;
   overflow-x: auto;
-  display: flex;            
-  justify-content: center;  
+  display: flex;
+  justify-content: center;
 `;
 
 export const HeatmapOuter = styled.div`
   display: grid;
-  grid-template-columns: auto auto; 
+  grid-template-columns: auto auto;
   gap: 8px 12px;
   align-items: start;
 
-  width: max-content;  
-  margin: 0 auto; 
+  width: max-content;
+  margin: 0 auto;
 `;
+
 export const HeatmapHeaderRow = styled.div<{ $cell: number; $gap: number }>`
   display: grid;
   grid-template-columns: repeat(24, ${({ $cell }) => $cell}px);
@@ -122,10 +125,9 @@ export const HeatmapLabelsCol = styled.div`
   align-content: start;
 `;
 
-/* 👇 Add prop typing for the transient props you pass */
 export const HeatmapRowLabel = styled.div<{ $cell: number }>`
   font-size: 12px;
-  opacity: 0.7;
+  color: ${({ theme }) => theme.colors.textMuted};
   line-height: ${({ $cell }) => $cell}px;
 `;
 
@@ -133,6 +135,7 @@ export const HeatmapAxisLabel = styled.div<{ $headerH: number }>`
   font-size: 10px;
   line-height: ${({ $headerH }) => $headerH}px;
   text-align: center;
+  color: ${({ theme }) => theme.colors.textMuted};
 `;
 
 export const HeatmapGrid = styled.div<{ $cell: number; $gap: number }>`
@@ -146,11 +149,15 @@ export const HeatmapCell = styled.div<{ $alpha: number; $cell: number }>`
   width: ${({ $cell }) => $cell}px;
   height: ${({ $cell }) => $cell}px;
   border-radius: 4px;
-  background: ${({ $alpha }) => `rgba(17, 17, 17, ${$alpha})`};
+  background: ${({ theme, $alpha }) =>
+    theme.name === "dark"
+      ? `rgba(245, 247, 250, ${$alpha})`
+      : `rgba(17, 17, 17, ${$alpha})`};
 `;
 
 export const HeatmapZeroCell = styled(HeatmapCell)`
-  background: rgba(17, 17, 17, 0.06);
+  background: ${({ theme }) =>
+    theme.name === "dark" ? "rgba(255,255,255,0.06)" : "rgba(17,17,17,0.06)"};
 `;
 
 /* ===== Misc layout/util ===== */
@@ -175,18 +182,18 @@ export const Table = styled.table`
 export const TH = styled.th`
   text-align: left;
   font-weight: 600;
-  color: #444;
+  color: ${({ theme }) => theme.colors.textMuted};
   padding: 10px 8px;
-  border-bottom: 1px solid #eee;
+  border-bottom: 1px solid ${({ theme }) => theme.colors.line};
 `;
 
 export const TD = styled.td`
   padding: 10px 8px;
-  border-bottom: 1px solid #f3f3f3;
+  border-bottom: 1px solid ${({ theme }) => theme.colors.lineFaint};
 `;
 
 export const TrMuted = styled.tr`
-  background: #fafafa;
+  background: ${({ theme }) => theme.colors.subtleBg};
 `;
 
 export const Badge = styled.span<{ $tone?: "neutral" | "success" | "warning" | "danger" }>`
@@ -196,25 +203,39 @@ export const Badge = styled.span<{ $tone?: "neutral" | "success" | "warning" | "
   font-size: 12px;
   padding: 2px 8px;
   border-radius: 999px;
-  background: ${({ $tone = "neutral" }) =>
+  background: ${({ $tone = "neutral", theme }) =>
     $tone === "success"
       ? "rgba(16,185,129,0.12)"
       : $tone === "warning"
       ? "rgba(245,158,11,0.12)"
       : $tone === "danger"
       ? "rgba(239,68,68,0.12)"
+      : theme.name === "dark"
+      ? "rgba(255,255,255,0.06)"
       : "rgba(17,17,17,0.06)"};
-  color: ${({ $tone = "neutral" }) =>
-    $tone === "success" ? "#065f46" : $tone === "warning" ? "#92400e" : $tone === "danger" ? "#7f1d1d" : "#333"};
+  color: ${({ $tone = "neutral", theme }) =>
+    $tone === "success"
+      ? theme.name === "dark"
+        ? "#34d399"
+        : "#065f46"
+      : $tone === "warning"
+      ? theme.name === "dark"
+        ? "#fbbf24"
+        : "#92400e"
+      : $tone === "danger"
+      ? theme.name === "dark"
+        ? "#ff6b6b"
+        : "#7f1d1d"
+      : theme.colors.text};
 `;
 
 export const Muted = styled.div`
-  opacity: 0.6;
+  color: ${({ theme }) => theme.colors.textMuted};
 `;
 
 export const FinePrint = styled.div`
   font-size: 12px;
-  opacity: 0.7;
+  color: ${({ theme }) => theme.colors.textMuted};
   margin-top: 8px;
 `;
 
@@ -238,7 +259,8 @@ export const IconButton = styled.button`
   padding: 4px;
   border-radius: 8px;
   cursor: pointer;
+
   &:hover {
-    background: rgba(17, 17, 17, 0.06);
+    background: ${({ theme }) => theme.colors.hover};
   }
 `;

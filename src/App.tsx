@@ -1,8 +1,8 @@
 // /src/App.tsx
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ThemeProvider } from "styled-components";
 import { GlobalStyle } from "./styles/GlobalStyle";
-import { lightTheme, darkTheme } from "./theme/theme";
+import { buildTheme } from "./theme/theme";
 import { useStore } from "./store/store";
 import "./App.css";
 
@@ -13,8 +13,17 @@ import { faBars } from "@fortawesome/free-solid-svg-icons";
 
 export default function App() {
   const [menuOpen, setMenuOpen] = useState(false);
-  const themeName = useStore((s) => s.theme); // "light" | "dark" from store
-  const theme = themeName === "dark" ? darkTheme : lightTheme;
+
+  const themeName = useStore((s) => s.theme);            // "light" | "dark" | "custom"
+  const customTheme = useStore((s) => s.customTheme);     // { base, colors } | null
+  const loadCustomTheme = useStore((s) => s.loadCustomTheme);
+
+  // Ensure custom palette is available on mount (safe no-op for light/dark)
+  useEffect(() => {
+    loadCustomTheme();
+  }, [loadCustomTheme]);
+
+  const theme = buildTheme(themeName, customTheme);
 
   return (
     <ThemeProvider theme={theme}>

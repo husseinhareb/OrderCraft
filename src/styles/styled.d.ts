@@ -1,8 +1,10 @@
+// /src/styles/styled.d.ts
 import "styled-components";
 
 declare module "styled-components" {
   export interface DefaultTheme {
-    name: "light" | "dark";
+    /** "light" | "dark" | "custom" */
+    name: "light" | "dark" | "custom";
     colors: {
       bg: string;
       surface: string;

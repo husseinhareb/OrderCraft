@@ -1,7 +1,5 @@
 // /src/components/LeftPanel/Styles/style.tsx
-
 import { styled } from "styled-components";
-
 
 export const Container = styled.div<{ $open: boolean }>`
   position: fixed;
@@ -9,10 +7,10 @@ export const Container = styled.div<{ $open: boolean }>`
   width: var(--left-panel-width, 0);
   max-width: 80vw;
   height: 100%;
-  background: #fff;
+  background: ${({ theme }) => theme.colors.surface};
   transform: translateX(${(p) => (p.$open ? "0" : "-100%")});
   z-index: 1000;
-  border-right: ${(p) => (p.$open ? "2px solid black" : "0")};
+  border-right: ${(p) => (p.$open ? `2px solid ${p.theme.colors.borderStrong}` : "0")};
   padding: ${(p) => (p.$open ? "16px" : "0")};
   overflow: hidden; /* the panel itself doesn't scroll */
 `;
@@ -25,7 +23,7 @@ export const Overlay = styled.div<{ $open: boolean }>`
   left: var(--left-panel-width, 0);
   right: var(--right-drawer-width, 0);
 
-  background: rgba(0,0,0,0.4);
+  background: ${({ theme }) => theme.colors.overlay};
   opacity: ${(p) => (p.$open ? 1 : 0)};
   pointer-events: ${(p) => (p.$open ? "auto" : "none")};
   transition: opacity 0.3s ease;
@@ -33,18 +31,29 @@ export const Overlay = styled.div<{ $open: boolean }>`
 `;
 
 export const PlusButton = styled.button`
-  position: absolute; right: 16px; bottom: 16px; width: 48px; height: 48px;
-  border: 2px solid black; border-radius: 50%; background: #fff; font-size: 28px;
-  display: flex; align-items: center; justify-content: center; cursor: pointer;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+  position: absolute;
+  right: 16px;
+  bottom: 16px;
+  width: 48px;
+  height: 48px;
+  border: 2px solid ${({ theme }) => theme.colors.borderStrong};
+  border-radius: 50%;
+  background: ${({ theme }) => theme.colors.surface};
+  color: ${({ theme }) => theme.colors.text};
+  font-size: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 2px 8px ${({ theme }) => theme.colors.softShadow};
 `;
 
 export const OrdersList = styled.ul`
   /* Make only the list scrollable inside the fixed panel */
   position: absolute;
-  top: 45px;     /* space for the top buttons */
+  top: 45px; /* space for the top buttons */
   right: 16px;
-  bottom: 88px;  /* clears the floating + button */
+  bottom: 88px; /* clears the floating + button */
   left: 16px;
 
   list-style: none;
@@ -63,18 +72,26 @@ export const OrdersList = styled.ul`
 
 export const OrderItem = styled.li`
   padding: 8px 10px;
-  border: 1px solid #000;
+  border: 1px solid ${({ theme }) => theme.colors.borderStrong};
   border-radius: 6px;
-  background: #fff;
-  transition: opacity 0.2s ease;
+  background: ${({ theme }) => theme.colors.surface};
+  transition: opacity 0.2s ease, background 0.2s ease;
   cursor: pointer;
+
+  &:hover {
+    background: ${({ theme }) => theme.colors.hover};
+  }
+
   &[data-done="true"] {
     opacity: 0.6;
   }
 `;
 
 export const Row = styled.div`
-  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
 `;
 
 export const RowTitle = styled.span`
@@ -90,19 +107,37 @@ export const RowTitle = styled.span`
 `;
 
 export const RowActions = styled.div`
-  display: flex; gap: 6px;
+  display: flex;
+  gap: 6px;
 `;
 
 export const IconButton = styled.button`
-  padding: 6px 10px; border: 1px solid #000; border-radius: 6px; background: #fff; cursor: pointer;
-  &[data-variant="danger"] { border-color: #c00; color: #c00; }
+  padding: 6px 10px;
+  border: 1px solid ${({ theme }) => theme.colors.borderStrong};
+  border-radius: 6px;
+  background: ${({ theme }) => theme.colors.surface};
+  color: ${({ theme }) => theme.colors.text};
+  cursor: pointer;
+
+  &:hover {
+    background: ${({ theme }) => theme.colors.hover};
+  }
+
+  &[data-variant="danger"] {
+    border-color: ${({ theme }) => theme.colors.danger};
+    color: ${({ theme }) => theme.colors.danger};
+  }
 `;
 
 export const EmptyMsg = styled.li`
-color: #666;
-padding: 6px 2px;
+  color: ${({ theme }) => theme.colors.textMuted};
+  padding: 6px 2px;
 `;
-export const ErrorMsg = styled.li` color: #c00; padding: 6px 2px; `;
+
+export const ErrorMsg = styled.li`
+  color: ${({ theme }) => theme.colors.danger};
+  padding: 6px 2px;
+`;
 
 export const CheckContainer = styled.div`
   position: relative;
@@ -137,14 +172,19 @@ export const CheckLabel = styled.label`
   ${CheckOrder}:checked + & svg g path {
     stroke-dashoffset: 0;
   }
+
+  /* make checkbox marks theme-aware */
+  svg rect,
+  svg g path {
+    stroke: ${({ theme }) => theme.colors.text} !important;
+  }
 `;
 
-
-// ---------- styled components for Settings modal ----------
+/* ---------- styled components for Settings modal ---------- */
 export const SettingsOverlay = styled.div`
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.4);
+  background: ${({ theme }) => theme.colors.overlay};
   z-index: 1300;
 `;
 
@@ -156,8 +196,8 @@ export const SettingsModal = styled.div`
   width: 95vw;
   height: 95vh;
   overflow: auto;
-  background: var(--panel-bg, #fff);
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+  background: var(--panel-bg, ${({ theme }) => theme.colors.surface});
+  box-shadow: 0 10px 40px ${({ theme }) => theme.colors.softShadow};
   padding: 16px;
   z-index: 1310;
 `;
@@ -181,11 +221,13 @@ export const CloseBtn = styled.button`
   cursor: pointer;
   padding: 4px 8px;
   border-radius: 8px;
+  color: ${({ theme }) => theme.colors.text};
 
   &:hover {
-    background: rgba(0, 0, 0, 0.06);
+    background: ${({ theme }) => theme.colors.hover};
   }
 `;
+
 export const SettingsButton = styled(IconButton)`
   position: absolute;
   top: 8px;

@@ -14,7 +14,7 @@ export const Overlay = styled.div<{ $open: boolean }>`
   left: var(--left-panel-width, 0);
   right: var(--right-drawer-width, 0);
 
-  background: rgba(0, 0, 0, 0.4);
+  background: ${({ theme }) => theme.colors.overlay};
   opacity: ${(p) => (p.$open ? 1 : 0)};
   pointer-events: ${(p) => (p.$open ? "auto" : "none")};
   transition: opacity 0.3s ease;
@@ -27,28 +27,35 @@ export const Drawer = styled.aside<{ $open: boolean }>`
   top: 0;
   right: 0;
   height: 100%;
-  /* was: width: 420px; max-width: 95vw; */
   width: min(420px, 95vw);
-  background: #fff;
-  border-left: 2px solid black;
+  background: ${({ theme }) => theme.colors.surface};
+  border-left: 2px solid ${({ theme }) => theme.colors.borderStrong};
   transform: translateX(${(p) => (p.$open ? "0" : "100%")});
   transition: transform 0.3s ease;
   z-index: 1050;
-  box-shadow: -8px 0 24px rgba(0,0,0,0.08);
+  box-shadow: -8px 0 24px ${({ theme }) => theme.colors.softShadow};
   display: flex;
   flex-direction: column;
 
-  form { height: 100%; display: flex; flex-direction: column; }
+  form {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+  }
 `;
-
 
 export const DrawerHeader = styled.div`
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 16px;
-  border-bottom: 1px solid #000;
-  h3 { font-size: 18px; }
+  border-bottom: 1px solid ${({ theme }) => theme.colors.borderStrong};
+
+  h3 {
+    font-size: 18px;
+    margin: 0;
+    color: ${({ theme }) => theme.colors.text};
+  }
 `;
 
 export const DrawerBody = styled.div`
@@ -64,23 +71,63 @@ export const DrawerFooter = styled.div`
   display: flex;
   gap: 8px;
   justify-content: flex-end;
-  border-top: 1px solid #000;
+  border-top: 1px solid ${({ theme }) => theme.colors.borderStrong};
 `;
 
-export const Field = styled.div` display: grid; gap: 6px; `;
-export const Label = styled.label` font-size: 14px; `;
+export const Field = styled.div`
+  display: grid;
+  gap: 6px;
+`;
+
+export const Label = styled.label`
+  font-size: 14px;
+`;
+
 export const Input = styled.input`
-  padding: 10px 12px; border: 1px solid #000; border-radius: 6px; font-size: 14px;
+  padding: 10px 12px;
+  border: 1px solid ${({ theme }) => theme.colors.borderStrong};
+  border-radius: 6px;
+  font-size: 14px;
+  background: ${({ theme }) => theme.colors.surface};
+  color: ${({ theme }) => theme.colors.text};
 `;
+
 export const Textarea = styled.textarea`
-  padding: 10px 12px; border: 1px solid #000; border-radius: 6px; font-size: 14px; resize: vertical;
+  padding: 10px 12px;
+  border: 1px solid ${({ theme }) => theme.colors.borderStrong};
+  border-radius: 6px;
+  font-size: 14px;
+  resize: vertical;
+  background: ${({ theme }) => theme.colors.surface};
+  color: ${({ theme }) => theme.colors.text};
 `;
+
 export const Select = styled.select`
-  padding: 10px 12px; border: 1px solid #000; border-radius: 6px; font-size: 14px;
+  padding: 10px 12px;
+  border: 1px solid ${({ theme }) => theme.colors.borderStrong};
+  border-radius: 6px;
+  font-size: 14px;
+  background: ${({ theme }) => theme.colors.surface};
+  color: ${({ theme }) => theme.colors.text};
 `;
+
 export const Button = styled.button<{ variant?: "ghost" }>`
-  padding: 10px 14px; border: 1px solid #000;
-  background: ${(p) => (p.variant === "ghost" ? "transparent" : "#000")};
-  color: ${(p) => (p.variant === "ghost" ? "#000" : "#fff")};
-  border-radius: 6px; cursor: pointer;
+  padding: 10px 14px;
+  border: 1px solid ${({ theme }) => theme.colors.borderStrong};
+  background: ${(p) =>
+    p.variant === "ghost" ? "transparent" : p.theme.colors.primary};
+  color: ${(p) =>
+    p.variant === "ghost"
+      ? p.theme.colors.text
+      : p.theme.name === "dark"
+      ? "#111"
+      : "#fff"};
+  border-radius: 6px;
+  cursor: pointer;
+
+  &:hover {
+    background: ${(p) =>
+      p.variant === "ghost" ? p.theme.colors.hover : p.theme.colors.primary};
+    opacity: ${(p) => (p.variant === "ghost" ? 1 : 0.92)};
+  }
 `;

@@ -1,24 +1,7 @@
 // /src/store/store.ts
 import { create } from "zustand";
 import { invoke } from "@tauri-apps/api/core";
-
-/* ---------- Theme ---------- */
-export type ThemeName = "light" | "dark";
-
-const getInitialTheme = (): ThemeName => {
-  try {
-    if (typeof window !== "undefined") {
-      const saved = window.localStorage?.getItem("theme") as ThemeName | null;
-      if (saved === "light" || saved === "dark") return saved;
-      const prefersDark =
-        window.matchMedia?.("(prefers-color-scheme: dark)")?.matches ?? false;
-      return prefersDark ? "dark" : "light";
-    }
-  } catch {
-    // ignore and fall back
-  }
-  return "light";
-};
+import type { CustomThemeDTO, ThemeName } from "../theme/theme";
 
 /* ---------- Types ---------- */
 
@@ -34,6 +17,20 @@ export type OpenedOrder = {
   position: number; // 1 is top (most recently opened)
 };
 
+/* ---------- Theme helpers ---------- */
+
+const getInitialTheme = (): ThemeName => {
+  try {
+    const saved = localStorage.getItem("theme") as ThemeName | null;
+    if (saved === "light" || saved === "dark" || saved === "custom") return saved;
+    const prefersDark =
+      window.matchMedia?.("(prefers-color-scheme: dark)")?.matches ?? false;
+    return prefersDark ? "dark" : "light";
+  } catch {
+    return "light";
+  }
+};
+
 /* ---------- Store ---------- */
 
 type AppState = {
@@ -41,6 +38,11 @@ type AppState = {
   theme: ThemeName;
   setTheme: (t: ThemeName) => void;
   toggleTheme: () => void;
+
+  customTheme: CustomThemeDTO | null;
+  loadCustomTheme: () => Promise<void>;
+  saveCustomTheme: (payload: CustomThemeDTO) => Promise<void>;
+  setCustomThemeLocal: (partial: Partial<CustomThemeDTO>) => void;
 
   /* UI */
   isOrderFormOpen: boolean;
@@ -77,20 +79,46 @@ export const useStore = create<AppState>((set, get) => ({
   theme: getInitialTheme(),
   setTheme: (t) => {
     try {
-      window.localStorage?.setItem("theme", t);
+      localStorage.setItem("theme", t);
     } catch {
-      // ignore storage errors
+      /* ignore */
     }
     set({ theme: t });
   },
   toggleTheme: () => {
-    const next: ThemeName = get().theme === "light" ? "dark" : "light";
+    const order: ThemeName[] = ["light", "dark", "custom"];
+    const curr = get().theme;
+    const next = order[(order.indexOf(curr) + 1) % order.length];
     try {
-      window.localStorage?.setItem("theme", next);
+      localStorage.setItem("theme", next);
     } catch {
-      // ignore storage errors
+      /* ignore */
     }
     set({ theme: next });
+  },
+
+  customTheme: null,
+  loadCustomTheme: async () => {
+    try {
+      const payload = await invoke<CustomThemeDTO | null>("get_theme_colors");
+      set({ customTheme: payload ?? { base: "light", colors: {} } });
+    } catch {
+      set({ customTheme: { base: "light", colors: {} } }); // safe default
+    }
+  },
+  saveCustomTheme: async (payload) => {
+    await invoke("save_theme_colors", { payload });
+    set({ customTheme: payload });
+  },
+  setCustomThemeLocal: (partial) => {
+    const prev = get().customTheme ?? { base: "light", colors: {} };
+    set({
+      customTheme: {
+        ...prev,
+        ...partial,
+        colors: { ...prev.colors, ...(partial as any).colors },
+      },
+    });
   },
 
   /* UI */
@@ -119,7 +147,10 @@ export const useStore = create<AppState>((set, get) => ({
       const data = await invoke<OrderListItem[]>("list_orders");
       set({ orders: data, loading: false });
     } catch (e: any) {
-      set({ error: e?.toString?.() ?? "Failed to load orders", loading: false });
+      set({
+        error: e?.toString?.() ?? "Failed to load orders",
+        loading: false,
+      });
     }
   },
 
@@ -180,15 +211,22 @@ export const useStore = create<AppState>((set, get) => ({
         ? { ...existing, position: 1 }
         : {
             orderId: id,
-            articleName: s.orders.find((o) => o.id === id)?.articleName ?? String(id),
+            articleName:
+              s.orders.find((o) => o.id === id)?.articleName ?? String(id),
             position: 1,
           };
-      const reindexed = [top, ...rest].map((x, i) => ({ ...x, position: i + 1 }));
+      const reindexed = [top, ...rest].map((x, i) => ({
+        ...x,
+        position: i + 1,
+      }));
       return {
         opened: reindexed,
         // keep right panel in "orders" mode whenever an order is opened
         showDashboard: false,
-        isOrderFormOpen: s.isOrderFormOpen && s.editingOrderId === id ? s.isOrderFormOpen : s.isOrderFormOpen,
+        isOrderFormOpen:
+          s.isOrderFormOpen && s.editingOrderId === id
+            ? s.isOrderFormOpen
+            : s.isOrderFormOpen,
       };
     });
 

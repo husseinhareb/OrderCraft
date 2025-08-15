@@ -1,3 +1,4 @@
+// (rewrite) /src/components/OrderContent/Styles/style.tsx
 import { styled } from "styled-components";
 
 export const Wrapper = styled.div`
@@ -5,11 +6,11 @@ export const Wrapper = styled.div`
 `;
 
 export const Card = styled.section`
-  background: #fff;
-  border: 1.5px solid #000;
+  background: ${({ theme }) => theme.colors.surface};
+  border: 1.5px solid ${({ theme }) => theme.colors.borderStrong};
   border-radius: 16px;
   padding: 16px;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+  box-shadow: 0 4px 20px ${({ theme }) => theme.colors.softShadow};
 `;
 
 export const Header = styled.header`
@@ -28,7 +29,7 @@ export const Title = styled.h2`
 export const SubTitle = styled.div`
   margin-top: 4px;
   font-size: 14px;
-  color: #555;
+  color: ${({ theme }) => theme.colors.textMuted};
 `;
 
 export const Actions = styled.div`
@@ -37,19 +38,38 @@ export const Actions = styled.div`
   flex-wrap: wrap;
 `;
 
-export const ActionBtn = styled.button<{ "data-variant"?: "primary" | "danger" | "outline" | "ghost" }>`
+export const ActionBtn = styled.button<{
+  "data-variant"?: "primary" | "danger" | "outline" | "ghost";
+}>`
   padding: 8px 12px;
   border-radius: 10px;
-  border: 1.5px solid #000;
+  border: 1.5px solid ${({ theme }) => theme.colors.borderStrong};
   cursor: pointer;
-  background: #fff;
+  background: ${({ theme }) => theme.colors.surface};
   line-height: 1;
   font-size: 14px;
+  color: ${({ theme }) => theme.colors.text};
 
-  &[data-variant="primary"] { background: #000; color: #fff; }
-  &[data-variant="danger"]  { border-color: #c00; color: #c00; background: #fff; }
-  &[data-variant="outline"] { background: #fff; }
-  &[data-variant="ghost"]   { border-color: transparent; padding: 6px 8px; }
+  &[data-variant="primary"] {
+    background: ${({ theme }) => theme.colors.primary};
+    color: ${({ theme }) => (theme.name === "dark" ? "#111" : "#fff")};
+  }
+
+  &[data-variant="danger"] {
+    border-color: ${({ theme }) => theme.colors.danger};
+    color: ${({ theme }) => theme.colors.danger};
+    background: ${({ theme }) => theme.colors.surface};
+  }
+
+  &[data-variant="outline"] {
+    background: ${({ theme }) => theme.colors.surface};
+  }
+
+  &[data-variant="ghost"] {
+    border-color: transparent;
+    padding: 6px 8px;
+    background: transparent;
+  }
 `;
 
 export const BadgeRow = styled.div`
@@ -64,15 +84,16 @@ export const Badge = styled.span`
   align-items: center;
   gap: 6px;
   padding: 6px 10px;
-  border: 1px dashed #000;
+  border: 1px dashed ${({ theme }) => theme.colors.borderStrong};
   border-radius: 9999px;
   font-size: 12px;
-  background: #fafafa;
+  background: ${({ theme }) => theme.colors.subtleBg};
+  color: ${({ theme }) => theme.colors.text};
 `;
 
 export const Separator = styled.hr`
   border: 0;
-  border-top: 1px solid #000;
+  border-top: 1px solid ${({ theme }) => theme.colors.borderStrong};
   margin: 16px 0;
 `;
 
@@ -98,7 +119,7 @@ export const MetaItem = styled.div`
 `;
 
 export const MetaLabel = styled.dt`
-  color: #444;
+  color: ${({ theme }) => theme.colors.textMuted};
   font-size: 12px;
   letter-spacing: 0.02em;
   text-transform: uppercase;
@@ -110,8 +131,12 @@ export const MetaValue = styled.dd`
   display: inline-flex;
   align-items: center;
   gap: 8px;
+  color: ${({ theme }) => theme.colors.text};
 
-  a { color: inherit; text-decoration: underline; }
+  a {
+    color: inherit;
+    text-decoration: underline;
+  }
 `;
 
 export const Description = styled.section`
@@ -123,20 +148,27 @@ export const Description = styled.section`
 `;
 
 export const EmptyState = styled.div`
-  border: 1.5px dashed #bbb;
+  border: 1.5px dashed ${({ theme }) => theme.colors.line};
   border-radius: 16px;
   padding: 24px;
   text-align: center;
-  background: #fff;
+  background: ${({ theme }) => theme.colors.surface};
 
-  strong { display: block; margin-bottom: 4px; }
-  span { color: #666; font-size: 14px; }
+  strong {
+    display: block;
+    margin-bottom: 4px;
+  }
+  span {
+    color: ${({ theme }) => theme.colors.textMuted};
+    font-size: 14px;
+  }
 `;
 
 export const ErrorBox = styled.div`
-  border: 1.5px solid #c00;
-  background: #fff5f5;
-  color: #900;
+  border: 1.5px solid ${({ theme }) => theme.colors.danger};
+  background: ${({ theme }) =>
+    theme.name === "dark" ? "rgba(255, 107, 107, 0.08)" : "#fff5f5"};
+  color: ${({ theme }) => (theme.name === "dark" ? "#ff9b9b" : "#900")};
   border-radius: 12px;
   padding: 12px 14px;
 `;

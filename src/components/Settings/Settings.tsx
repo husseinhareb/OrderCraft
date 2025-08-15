@@ -2,11 +2,35 @@
 import { type FC, useEffect, useMemo, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import {
-  Actions, AddRow, CheckboxLabel, CompanyRow, Content, Error, Field, InlineWrap,
-  Input, Label, List, Muted, Name, PrimaryButton, RadioItem, RadioRow, Section,
-  SectionTitle, Select, Sidebar, Small, SmallButton, Spacer, TabButton, Tag, Wrap
+  Actions,
+  AddRow,
+  CheckboxLabel,
+  CompanyRow,
+  Content,
+  Error,
+  Field,
+  InlineWrap,
+  Input,
+  Label,
+  List,
+  Muted,
+  Name,
+  PrimaryButton,
+  RadioItem,
+  RadioRow,
+  Section,
+  SectionTitle,
+  Select,
+  Sidebar,
+  Small,
+  SmallButton,
+  Spacer,
+  TabButton,
+  Tag,
+  Wrap,
 } from "./Styles/style";
-import { useStore, type ThemeName } from "../../store/store";
+import { useStore } from "../../store/store";
+import { THEME_KEYS, type ThemeName } from "../../theme/theme";
 
 // ---------- Types ----------
 type DeliveryCompany = {
@@ -42,9 +66,14 @@ const Settings: FC = () => {
   const [defaultCompanyName, setDefaultCompanyName] = useState("");
 
   // Theme (hook into Zustand theme)
-  const storeTheme = useStore((s) => s.theme);
+  const storeTheme = useStore((s) => s.theme); // "light" | "dark" | "custom"
   const setStoreTheme = useStore((s) => s.setTheme);
   const [themeChoice, setThemeChoice] = useState<ThemeName>(storeTheme);
+
+  const customTheme = useStore((s) => s.customTheme);
+  const loadCustomTheme = useStore((s) => s.loadCustomTheme);
+  const saveCustomTheme = useStore((s) => s.saveCustomTheme);
+  const setCustomThemeLocal = useStore((s) => s.setCustomThemeLocal);
 
   // Companies
   const [companies, setCompanies] = useState<DeliveryCompany[]>([]);
@@ -82,11 +111,14 @@ const Settings: FC = () => {
 
         if (!mounted) return;
 
-        // If backend has a persisted theme, respect it (only "light" | "dark")
-        if (savedTheme === "light" || savedTheme === "dark") {
+        // Persisted theme can be "light" | "dark" | "custom"
+        if (savedTheme === "light" || savedTheme === "dark" || savedTheme === "custom") {
           setThemeChoice(savedTheme);
           setStoreTheme(savedTheme);
         }
+
+        // ensure we have latest custom palette in memory
+        await loadCustomTheme();
 
         setDefaultCity(cityVal || "");
         setConfettiOnDone((confettiVal ?? "true") !== "false");
@@ -101,7 +133,7 @@ const Settings: FC = () => {
     return () => {
       mounted = false;
     };
-  }, [setStoreTheme]);
+  }, [setStoreTheme, loadCustomTheme]);
 
   // Handlers — General
   const saveGeneral = async () => {
@@ -119,11 +151,18 @@ const Settings: FC = () => {
   // Handlers — Theme
   const saveTheme = async () => {
     try {
-      setStoreTheme(themeChoice);            // updates ThemeProvider immediately
-      await setSetting("theme", themeChoice); // persist in backend
+      setStoreTheme(themeChoice); // updates ThemeProvider immediately
+      await setSetting("theme", themeChoice); // persist selection
+      if (themeChoice === "custom" && customTheme) {
+        await saveCustomTheme(customTheme); // persist custom palette
+      }
     } catch (e: any) {
       setError(e?.message || "Failed to save theme.");
     }
+  };
+
+  const updateCustomColor = (key: (typeof THEME_KEYS)[number], value: string) => {
+    setCustomThemeLocal({ colors: { [key]: value } as any });
   };
 
   // Handlers — Companies
@@ -275,7 +314,101 @@ const Settings: FC = () => {
                 />
                 <label htmlFor="theme-dark">Dark</label>
               </RadioItem>
+              <RadioItem>
+                <input
+                  id="theme-custom"
+                  type="radio"
+                  name="theme"
+                  checked={themeChoice === "custom"}
+                  onChange={() => setThemeChoice("custom")}
+                />
+                <label htmlFor="theme-custom">Custom</label>
+              </RadioItem>
             </RadioRow>
+
+            {themeChoice === "custom" && (
+              <>
+                <SectionTitle>Custom palette</SectionTitle>
+
+                {/* Base selection */}
+                <RadioRow>
+                  <RadioItem>
+                    <input
+                      id="custom-base-light"
+                      type="radio"
+                      name="custom-base"
+                      checked={(customTheme?.base ?? "light") === "light"}
+                      onChange={() => setCustomThemeLocal({ base: "light" })}
+                    />
+                    <label htmlFor="custom-base-light">Base: Light</label>
+                  </RadioItem>
+                  <RadioItem>
+                    <input
+                      id="custom-base-dark"
+                      type="radio"
+                      name="custom-base"
+                      checked={(customTheme?.base ?? "light") === "dark"}
+                      onChange={() => setCustomThemeLocal({ base: "dark" })}
+                    />
+                    <label htmlFor="custom-base-dark">Base: Dark</label>
+                  </RadioItem>
+                </RadioRow>
+
+                {/* Editable tokens */}
+                <List>
+                  {THEME_KEYS.map((k) => {
+                    const val = customTheme?.colors?.[k] ?? "";
+                    const isAlpha =
+                      k === "overlay" || k === "hover" || k === "softShadow";
+                    return (
+                      <Field key={k}>
+                        <Label htmlFor={`color-${k}`}>{k}</Label>
+                        {!isAlpha ? (
+                          <InlineWrap>
+                            <Input
+                              id={`color-${k}`}
+                              type="color"
+                              value={
+                                /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(val)
+                                  ? val
+                                  : "#000000"
+                              }
+                              onChange={(e) => updateCustomColor(k, e.target.value)}
+                              aria-label={`${k} (color picker)`}
+                              style={{ width: 48, padding: 0, height: 36 }}
+                            />
+                            <Input
+                              value={val}
+                              onChange={(e) => updateCustomColor(k, e.target.value)}
+                              placeholder="#000000"
+                              aria-label={`${k} hex value`}
+                            />
+                          </InlineWrap>
+                        ) : (
+                          <Input
+                            id={`color-${k}`}
+                            value={val}
+                            onChange={(e) => updateCustomColor(k, e.target.value)}
+                            placeholder={
+                              k === "softShadow"
+                                ? "rgba(0,0,0,0.06)"
+                                : "rgba(0,0,0,0.40)"
+                            }
+                            aria-label={`${k} (rgba or hex)`}
+                          />
+                        )}
+                      </Field>
+                    );
+                  })}
+                </List>
+
+                <Muted>
+                  Tip: For <code>overlay</code>, <code>hover</code>, and{" "}
+                  <code>softShadow</code> you can use <code>rgba()</code> for
+                  transparency.
+                </Muted>
+              </>
+            )}
 
             <Actions>
               <PrimaryButton onClick={saveTheme}>Save theme</PrimaryButton>

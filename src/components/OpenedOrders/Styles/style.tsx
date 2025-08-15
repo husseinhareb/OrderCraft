@@ -1,10 +1,11 @@
+// /src/components/OpenedOrders/Styles/style.tsx
 import { styled } from "styled-components";
 
 export const OpenedBar = styled.div`
   top: 0;
   z-index: 1045;
-  background: #fff;
-  height: 40px
+  background: ${({ theme }) => theme.colors.surface};
+  height: 40px;
 `;
 
 export const OpenedList = styled.div`
@@ -18,9 +19,14 @@ export const OpenedChip = styled.button`
   align-items: center;
   gap: 8px;
   padding: 6px 10px;
-  border: 1px solid #000;
-  background: #fff;
+  border: 1px solid ${({ theme }) => theme.colors.borderStrong};
+  background: ${({ theme }) => theme.colors.surface};
+  color: ${({ theme }) => theme.colors.text};
   cursor: pointer;
+
+  &:hover {
+    background: ${({ theme }) => theme.colors.hover};
+  }
 
   .title {
     max-width: 180px;
@@ -35,4 +41,10 @@ export const CloseChipBtn = styled.button`
   background: transparent;
   cursor: pointer;
   font-size: 14px;
+  color: ${({ theme }) => theme.colors.textMuted};
+
+  &:hover {
+    background: ${({ theme }) => theme.colors.hover};
+    border-radius: 6px;
+  }
 `;
