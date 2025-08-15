@@ -1,10 +1,14 @@
+// /src/components/Settings/Settings.tsx
 import { type FC, useEffect, useMemo, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { Actions, AddRow, CheckboxLabel, CompanyRow, Content, Error, Field, InlineWrap, Input, Label, List, Muted, Name, PrimaryButton, RadioItem, RadioRow, Section, SectionTitle, Select, Sidebar, Small, SmallButton, Spacer, TabButton, Tag, Wrap } from "./Styles/style";
+import {
+  Actions, AddRow, CheckboxLabel, CompanyRow, Content, Error, Field, InlineWrap,
+  Input, Label, List, Muted, Name, PrimaryButton, RadioItem, RadioRow, Section,
+  SectionTitle, Select, Sidebar, Small, SmallButton, Spacer, TabButton, Tag, Wrap
+} from "./Styles/style";
+import { useStore, type ThemeName } from "../../store/store";
 
 // ---------- Types ----------
-type ThemeChoice = "system" | "light" | "dark";
-
 type DeliveryCompany = {
   id: number;
   name: string;
@@ -25,18 +29,10 @@ async function setSetting(key: string, value: string) {
   await invoke("set_setting", { key, value });
 }
 
-function applyTheme(choice: ThemeChoice) {
-  const root = document.documentElement;
-  if (choice === "system") {
-    root.removeAttribute("data-theme");
-  } else {
-    root.setAttribute("data-theme", choice);
-  }
-}
-
 // ---------- Component ----------
 const Settings: FC = () => {
-  const [activeTab, setActiveTab] = useState<"general" | "theme" | "companies">("general");
+  const [activeTab, setActiveTab] =
+    useState<"general" | "theme" | "companies">("general");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -45,8 +41,10 @@ const Settings: FC = () => {
   const [confettiOnDone, setConfettiOnDone] = useState(true);
   const [defaultCompanyName, setDefaultCompanyName] = useState("");
 
-  // Theme
-  const [theme, setTheme] = useState<ThemeChoice>("system");
+  // Theme (hook into Zustand theme)
+  const storeTheme = useStore((s) => s.theme);
+  const setStoreTheme = useStore((s) => s.setTheme);
+  const [themeChoice, setThemeChoice] = useState<ThemeName>(storeTheme);
 
   // Companies
   const [companies, setCompanies] = useState<DeliveryCompany[]>([]);
@@ -55,10 +53,15 @@ const Settings: FC = () => {
   const sortedCompanies = useMemo(
     () =>
       [...companies].sort((a, b) =>
-        a.active === b.active ? a.name.localeCompare(b.name) : Number(b.active) - Number(a.active)
+        a.active === b.active
+          ? a.name.localeCompare(b.name)
+          : Number(b.active) - Number(a.active)
       ),
     [companies]
   );
+
+  // Keep local theme radio in sync if store changes elsewhere
+  useEffect(() => setThemeChoice(storeTheme), [storeTheme]);
 
   // Initial load
   useEffect(() => {
@@ -68,19 +71,22 @@ const Settings: FC = () => {
         setLoading(true);
         setError(null);
 
-        const [themeVal, cityVal, confettiVal, defCompanyVal, list] = await Promise.all([
-          getSetting("theme"),
-          getSetting("defaultCity"),
-          getSetting("confettiOnDone"),
-          getSetting("defaultDeliveryCompany"),
-          invoke<DeliveryCompany[]>("list_delivery_companies"),
-        ]);
+        const [savedTheme, cityVal, confettiVal, defCompanyVal, list] =
+          await Promise.all([
+            getSetting("theme"),
+            getSetting("defaultCity"),
+            getSetting("confettiOnDone"),
+            getSetting("defaultDeliveryCompany"),
+            invoke<DeliveryCompany[]>("list_delivery_companies"),
+          ]);
 
         if (!mounted) return;
 
-        const t = (themeVal as ThemeChoice) || "system";
-        setTheme(t);
-        applyTheme(t);
+        // If backend has a persisted theme, respect it (only "light" | "dark")
+        if (savedTheme === "light" || savedTheme === "dark") {
+          setThemeChoice(savedTheme);
+          setStoreTheme(savedTheme);
+        }
 
         setDefaultCity(cityVal || "");
         setConfettiOnDone((confettiVal ?? "true") !== "false");
@@ -95,7 +101,7 @@ const Settings: FC = () => {
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [setStoreTheme]);
 
   // Handlers — General
   const saveGeneral = async () => {
@@ -113,8 +119,8 @@ const Settings: FC = () => {
   // Handlers — Theme
   const saveTheme = async () => {
     try {
-      await setSetting("theme", theme);
-      applyTheme(theme);
+      setStoreTheme(themeChoice);            // updates ThemeProvider immediately
+      await setSetting("theme", themeChoice); // persist in backend
     } catch (e: any) {
       setError(e?.message || "Failed to save theme.");
     }
@@ -154,7 +160,10 @@ const Settings: FC = () => {
     try {
       await invoke("rename_delivery_company", { id, newName: name });
       await refreshCompanies();
-      if (defaultCompanyName && defaultCompanyName.toLowerCase() === name.toLowerCase()) {
+      if (
+        defaultCompanyName &&
+        defaultCompanyName.toLowerCase() === name.toLowerCase()
+      ) {
         setDefaultCompanyName(name); // ensure canonical casing
       }
     } catch (e: any) {
@@ -248,21 +257,11 @@ const Settings: FC = () => {
             <RadioRow>
               <RadioItem>
                 <input
-                  id="theme-system"
-                  type="radio"
-                  name="theme"
-                  checked={theme === "system"}
-                  onChange={() => setTheme("system")}
-                />
-                <label htmlFor="theme-system">System</label>
-              </RadioItem>
-              <RadioItem>
-                <input
                   id="theme-light"
                   type="radio"
                   name="theme"
-                  checked={theme === "light"}
-                  onChange={() => setTheme("light")}
+                  checked={themeChoice === "light"}
+                  onChange={() => setThemeChoice("light")}
                 />
                 <label htmlFor="theme-light">Light</label>
               </RadioItem>
@@ -271,8 +270,8 @@ const Settings: FC = () => {
                   id="theme-dark"
                   type="radio"
                   name="theme"
-                  checked={theme === "dark"}
-                  onChange={() => setTheme("dark")}
+                  checked={themeChoice === "dark"}
+                  onChange={() => setThemeChoice("dark")}
                 />
                 <label htmlFor="theme-dark">Dark</label>
               </RadioItem>
@@ -288,7 +287,12 @@ const Settings: FC = () => {
           <Section aria-labelledby="companies-title">
             <SectionTitle id="companies-title">Delivery companies</SectionTitle>
 
-            <AddRow onSubmit={(e) => { e.preventDefault(); addCompany(); }}>
+            <AddRow
+              onSubmit={(e) => {
+                e.preventDefault();
+                addCompany();
+              }}
+            >
               <Input
                 value={newCompany}
                 onChange={(e) => setNewCompany(e.target.value)}
@@ -326,10 +330,10 @@ const Settings: FC = () => {
 export default Settings;
 
 // ---------- Small inline editable input ----------
-const InlineEditName: FC<{ defaultValue: string; onSubmit: (v: string) => void }> = ({
-  defaultValue,
-  onSubmit,
-}) => {
+const InlineEditName: FC<{
+  defaultValue: string;
+  onSubmit: (v: string) => void;
+}> = ({ defaultValue, onSubmit }) => {
   const [val, setVal] = useState(defaultValue);
   const [editing, setEditing] = useState(false);
 
@@ -349,14 +353,27 @@ const InlineEditName: FC<{ defaultValue: string; onSubmit: (v: string) => void }
             value={val}
             onChange={(e) => setVal(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === "Enter") { e.preventDefault(); commit(); }
-              if (e.key === "Escape") { e.preventDefault(); setVal(defaultValue); setEditing(false); }
+              if (e.key === "Enter") {
+                e.preventDefault();
+                commit();
+              }
+              if (e.key === "Escape") {
+                e.preventDefault();
+                setVal(defaultValue);
+                setEditing(false);
+              }
             }}
             autoFocus
             aria-label="Company name"
           />
           <SmallButton onClick={commit}>Save</SmallButton>
-          <SmallButton data-variant="ghost" onClick={() => { setVal(defaultValue); setEditing(false); }}>
+          <SmallButton
+            data-variant="ghost"
+            onClick={() => {
+              setVal(defaultValue);
+              setEditing(false);
+            }}
+          >
             Cancel
           </SmallButton>
         </>
@@ -369,4 +386,3 @@ const InlineEditName: FC<{ defaultValue: string; onSubmit: (v: string) => void }
     </InlineWrap>
   );
 };
-
