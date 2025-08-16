@@ -23,7 +23,7 @@ body,
 
 .hamburger {
   position: fixed;
-  top: 16px;
+  top: var(--toolbar-top);        
   left: var(--hamburger-left);
   width: var(--hamburger-width);
   height: 32px;
@@ -36,6 +36,7 @@ body,
   cursor: pointer;
   z-index: 1100;
 }
+
 
 .hamburger span {
   display: block;

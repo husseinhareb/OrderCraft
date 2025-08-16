@@ -11,8 +11,10 @@ export const Container = styled.div<{ $open: boolean }>`
   transform: translateX(${(p) => (p.$open ? "0" : "-100%")});
   z-index: 1000;
   border-right: ${(p) => (p.$open ? `2px solid ${p.theme.colors.borderStrong}` : "0")};
-  padding: ${(p) => (p.$open ? "16px" : "0")};
-  overflow: hidden; /* the panel itself doesn't scroll */
+
+  /* use a CSS var for padding so other elements can compensate it */
+  padding: ${(p) => (p.$open ? "var(--left-panel-padding, 16px)" : "0")};
+  overflow: hidden;
 `;
 
 export const Overlay = styled.div<{ $open: boolean }>`
@@ -228,16 +230,17 @@ export const CloseBtn = styled.button`
   }
 `;
 
+/* /src/components/LeftPanel/Styles/style.tsx */
 export const SettingsButton = styled(IconButton)`
   position: absolute;
-  top: 8px;
+  top: var(--toolbar-top, 16px);   /* ← was calc(...) */
   right: 8px;
-  z-index: 1; /* above list items within the panel */
+  z-index: 1;
 `;
 
 export const ChartButton = styled(IconButton)`
   position: absolute;
-  top: 8px;
-  right: 48px; /* sits to the left of the Settings button */
+  top: var(--toolbar-top, 16px);   /* ← was calc(...) */
+  right: 48px;
   z-index: 1;
 `;
