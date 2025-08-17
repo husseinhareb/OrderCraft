@@ -1,17 +1,26 @@
 use rusqlite::{params, Connection};
-use rusqlite::OptionalExtension;
+use std::time::Duration;
 
 pub fn open_db(path: &std::path::PathBuf) -> rusqlite::Result<Connection> {
     let conn = Connection::open(path)?;
-    // Optional performance pragmas; safe defaults for a desktop app
-    conn.execute("PRAGMA journal_mode=WAL", [])?;
-    conn.execute("PRAGMA synchronous=NORMAL", [])?;
-    conn.execute("PRAGMA busy_timeout=5000", [])?;
-    conn.execute("PRAGMA foreign_keys = ON", [])?;
+
+    // Set PRAGMAs using execute_batch (ignores any returned rows, e.g. journal_mode)
+    conn.execute_batch(
+        r#"
+        PRAGMA journal_mode=WAL;
+        PRAGMA synchronous=NORMAL;
+        PRAGMA foreign_keys=ON;
+        "#,
+    )?;
+
+    // Use the dedicated API for busy timeout
+    conn.busy_timeout(Duration::from_millis(5000))?;
+
     Ok(conn)
 }
 
 pub fn ensure_schema(conn: &Connection) -> Result<(), rusqlite::Error> {
+    // Keep this for safety when ensure_schema is called with an external Connection
     conn.execute("PRAGMA foreign_keys = ON", [])?;
 
     // --- existing tables ---

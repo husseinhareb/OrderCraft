@@ -1,4 +1,3 @@
-pub mod greet;
 pub mod orders;
 pub mod opened_orders;
 pub mod search;

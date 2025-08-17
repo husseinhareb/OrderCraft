@@ -32,8 +32,6 @@ pub fn run() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
-            // greet
-            commands::greet::greet,
             // orders
             commands::orders::save_order,
             commands::orders::get_order,
