@@ -32,15 +32,3 @@ impl BaseTheme {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, Default)]
-#[serde(rename_all = "camelCase")]
-pub struct ThemeDTO {
-    /// "light" | "dark" | "custom"
-    pub base: BaseTheme,
-    /// token -> color (e.g. "bg": "#ffffff", "overlay": "rgba(0,0,0,0.4)")
-    pub colors: HashMap<String, String>,
-    /// Effective confetti palette to use on the client (1..=5 colors).
-    /// - If base=light/dark this will be ["#000000"] or ["#ffffff"].
-    /// - If base=custom this is whatever user configured (up to 5).
-    pub confetti_colors: Option<Vec<String>>,
-}
