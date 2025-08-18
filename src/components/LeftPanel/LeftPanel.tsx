@@ -1,5 +1,5 @@
 // /src/components/LeftPanel/LeftPanel.tsx
-import { useEffect, useState, lazy, Suspense, type FC } from "react";
+import { useEffect, type FC } from "react";
 import {
   Container,
   Overlay,
@@ -16,19 +16,11 @@ import {
   CheckContainer,
   CheckOrder,
   CheckLabel,
-  SettingsOverlay,
-  SettingsModal,
-  SettingsHeader,
-  SettingsTitle,
-  CloseBtn,
   ChartButton,
 } from "./Styles/style";
 import { useStore } from "../../store/store";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faChartLine, faGear, faPlus } from "@fortawesome/free-solid-svg-icons";
-
-// Lazy-load the settings component. Path: /src/components/Settings/Settings.tsx
-const Settings = lazy(() => import("../Settings/Settings"));
 
 type LeftPanelProps = { open: boolean; onClose: () => void };
 
@@ -45,11 +37,7 @@ const LeftPanel: FC<LeftPanelProps> = ({ open, onClose }) => {
     deleteOrder,
     setOrderDone,
     closeOrderForm,
-    openDashboard,
   } = useStore();
-
-  // Show/hide Settings modal
-  const [showSettings, setShowSettings] = useState(false);
 
   // initial data
   useEffect(() => {
@@ -70,11 +58,11 @@ const LeftPanel: FC<LeftPanelProps> = ({ open, onClose }) => {
 
   const openContent = (id: number) => {
     closeOrderForm?.();
-    const { closeDashboard, openInStack } = useStore.getState();
-    closeDashboard?.();           // ✅ ensure right panel exits dashboard mode
+    const { closeDashboard, closeSettings, openInStack } = useStore.getState();
+    closeDashboard?.(); // ensure right panel exits dashboard mode
+    closeSettings?.();  // ensure right panel exits settings mode
     openInStack(id);
   };
-
 
   const handleDelete = async (id: number) => {
     if (confirm("Delete this order?")) {
@@ -112,21 +100,22 @@ const LeftPanel: FC<LeftPanelProps> = ({ open, onClose }) => {
 
   const handleOpenSettings = () => {
     closeOrderForm?.();
-    useStore.getState().closeDashboard?.();
-    setShowSettings(true);
+    const { closeDashboard, openSettings } = useStore.getState();
+    closeDashboard?.();
+    openSettings(); // flip right panel into Settings mode
   };
+
   const handleOpenDashboard = () => {
     closeOrderForm?.();
-    openDashboard(); // ⬅️ flips the right panel into Dashboard mode
+    const { openDashboard, closeSettings } = useStore.getState();
+    closeSettings?.();
+    openDashboard(); // flip right panel into Dashboard mode
   };
-  const handleCloseSettings = () => setShowSettings(false);
-
-  const settingsTitleId = "settings-title";
 
   return (
     <>
       <Container id="left-menu" className="left-panel" $open={open}>
-        {/* Header with Settings button */}
+        {/* Header buttons */}
         <ChartButton
           type="button"
           onClick={handleOpenDashboard}
@@ -135,6 +124,7 @@ const LeftPanel: FC<LeftPanelProps> = ({ open, onClose }) => {
         >
           <FontAwesomeIcon icon={faChartLine} />
         </ChartButton>
+
         <SettingsButton
           type="button"
           onClick={handleOpenSettings}
@@ -209,7 +199,9 @@ const LeftPanel: FC<LeftPanelProps> = ({ open, onClose }) => {
                     <IconButton
                       type="button"
                       onClick={() => {
-                        useStore.getState().closeDashboard?.(); // ✅
+                        const { closeDashboard, closeSettings } = useStore.getState();
+                        closeDashboard?.();
+                        closeSettings?.();
                         openOrderFormForEdit(o.id);
                       }}
                       aria-label="Edit order"
@@ -238,35 +230,6 @@ const LeftPanel: FC<LeftPanelProps> = ({ open, onClose }) => {
 
       {/* Overlay that closes the left panel */}
       <Overlay $open={open} onClick={onClose} aria-hidden={!open} />
-
-      {/* SETTINGS MODAL (styled-components) */}
-      {showSettings && (
-        <>
-          <SettingsOverlay onClick={handleCloseSettings} aria-hidden="true" />
-          <SettingsModal
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby={settingsTitleId}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <SettingsHeader>
-              <SettingsTitle id={settingsTitleId}>Settings</SettingsTitle>
-              <CloseBtn
-                type="button"
-                onClick={handleCloseSettings}
-                aria-label="Close settings"
-                title="Close"
-              >
-                ✕
-              </CloseBtn>
-            </SettingsHeader>
-
-            <Suspense fallback={<div style={{ padding: 12 }}>Loading settings…</div>}>
-              <Settings />
-            </Suspense>
-          </SettingsModal>
-        </>
-      )}
     </>
   );
 };

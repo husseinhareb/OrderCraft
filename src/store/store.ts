@@ -51,10 +51,14 @@ type AppState = {
   openOrderFormForEdit: (id: number) => void;
   closeOrderForm: () => void;
 
-  /* Dashboard (Right Panel) */
+  /* Right Panel modes */
   showDashboard: boolean;
   openDashboard: () => void;
   closeDashboard: () => void;
+
+  showSettings: boolean;
+  openSettings: () => void;
+  closeSettings: () => void;
 
   /* Orders */
   orders: OrderListItem[];
@@ -125,16 +129,41 @@ export const useStore = create<AppState>((set, get) => ({
   isOrderFormOpen: false,
   editingOrderId: null,
   openOrderForm: () =>
-    set({ isOrderFormOpen: true, editingOrderId: null, showDashboard: false }),
+    set({
+      isOrderFormOpen: true,
+      editingOrderId: null,
+      showDashboard: false,
+      showSettings: false,
+    }),
   openOrderFormForEdit: (id) =>
-    set({ isOrderFormOpen: true, editingOrderId: id, showDashboard: false }),
+    set({
+      isOrderFormOpen: true,
+      editingOrderId: id,
+      showDashboard: false,
+      showSettings: false,
+    }),
   closeOrderForm: () => set({ isOrderFormOpen: false, editingOrderId: null }),
 
-  /* Dashboard (Right Panel) */
+  /* Right Panel modes */
   showDashboard: false,
   openDashboard: () =>
-    set({ showDashboard: true, isOrderFormOpen: false, editingOrderId: null }),
+    set({
+      showDashboard: true,
+      showSettings: false,
+      isOrderFormOpen: false,
+      editingOrderId: null,
+    }),
   closeDashboard: () => set({ showDashboard: false }),
+
+  showSettings: false,
+  openSettings: () =>
+    set({
+      showSettings: true,
+      showDashboard: false,
+      isOrderFormOpen: false,
+      editingOrderId: null,
+    }),
+  closeSettings: () => set({ showSettings: false }),
 
   /* Orders */
   orders: [],
@@ -223,10 +252,7 @@ export const useStore = create<AppState>((set, get) => ({
         opened: reindexed,
         // keep right panel in "orders" mode whenever an order is opened
         showDashboard: false,
-        isOrderFormOpen:
-          s.isOrderFormOpen && s.editingOrderId === id
-            ? s.isOrderFormOpen
-            : s.isOrderFormOpen,
+        showSettings: false,
       };
     });
 
@@ -255,6 +281,11 @@ export const useStore = create<AppState>((set, get) => ({
 
   openInStackAndEdit: async (id: number) => {
     await get().openInStack(id);
-    set({ isOrderFormOpen: true, editingOrderId: id, showDashboard: false });
+    set({
+      isOrderFormOpen: true,
+      editingOrderId: id,
+      showDashboard: false,
+      showSettings: false,
+    });
   },
 }));
