@@ -1,5 +1,6 @@
 // /src/components/LeftPanel/LeftPanel.tsx
-import { useEffect, useCallback, type FC } from "react";
+import { useEffect, useCallback, useState, type FC } from "react";
+import { invoke } from "@tauri-apps/api/core";
 import {
   Container,
   Overlay,
@@ -39,11 +40,39 @@ const LeftPanel: FC<LeftPanelProps> = ({ open, onClose }) => {
     closeOrderForm,
   } = useStore();
 
+  // Observe selected theme so we can refresh the confetti palette when it changes
+  const storeTheme = useStore((s) => s.theme); // "light" | "dark" | "custom"
+
+  // Confetti palette (computed server-side; may be 1..5 colors)
+  const [confettiPalette, setConfettiPalette] = useState<string[]>(["#000000"]);
+
   // initial data
   useEffect(() => {
     fetchOrders();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // load / refresh confetti palette whenever theme changes
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        // Ask backend for the effective palette based on current theme + custom settings
+        const colors = await invoke<string[]>("get_confetti_palette");
+        if (mounted && Array.isArray(colors) && colors.length > 0) {
+          setConfettiPalette(colors.slice(0, 5));
+          return;
+        }
+      } catch {
+        // fall through to local fallback
+      }
+      // Fallback if invoke fails or returns nothing
+      setConfettiPalette(storeTheme === "dark" ? ["#ffffff"] : ["#000000"]);
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, [storeTheme]);
 
   // keep layout var in sync with open/close (client-only)
   useEffect(() => {
@@ -66,17 +95,12 @@ const LeftPanel: FC<LeftPanelProps> = ({ open, onClose }) => {
   }, [closeOrderForm]);
 
   const handleDelete = useCallback(async (id: number) => {
-    // keep it simple; replace with your modal later if desired
-    // window.confirm() blocks, which is fine for now
     if (confirm("Delete this order?")) {
       await deleteOrder(id);
     }
   }, [deleteOrder]);
 
   const handleDoneToggle = useCallback(async (id: number, next: boolean) => {
-    // If your store returns success/failure, you can use it:
-    // const ok = await setOrderDone(id, next);
-    // if (!ok) return;
     await setOrderDone(id, next);
 
     const prefersReducedMotion =
@@ -87,7 +111,7 @@ const LeftPanel: FC<LeftPanelProps> = ({ open, onClose }) => {
       try {
         const { default: confetti } = await import("canvas-confetti");
         confetti({
-          particleCount: 420,   // slightly lower for perf without losing effect
+          particleCount: 420,
           spread: 210,
           startVelocity: 50,
           gravity: 0.9,
@@ -95,13 +119,14 @@ const LeftPanel: FC<LeftPanelProps> = ({ open, onClose }) => {
           scalar: 1.0,
           origin: { x: 0.5, y: 0.5 },
           zIndex: 1200,
-          colors: ["#000000"],
+          // NEW: dynamic colors from backend (light -> black, dark -> white, custom -> up to 5 colors)
+          colors: confettiPalette && confettiPalette.length > 0 ? confettiPalette : ["#000000"],
         });
       } catch {
         // ignore if confetti fails to load
       }
     }
-  }, [setOrderDone]);
+  }, [setOrderDone, confettiPalette]);
 
   const handleOpenSettings = useCallback(() => {
     closeOrderForm?.();
