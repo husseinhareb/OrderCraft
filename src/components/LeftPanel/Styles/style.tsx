@@ -15,6 +15,11 @@ export const Container = styled.div<{ $open: boolean }>`
   /* use a CSS var for padding so other elements can compensate it */
   padding: ${(p) => (p.$open ? "var(--left-panel-padding, 16px)" : "0")};
   overflow: hidden;
+
+  /* NEW: toolbar sizing (used by buttons + list offset) */
+  --toolbar-top: var(--left-panel-padding, 16px);
+  --toolbar-height: 36px;
+  --toolbar-gap: 12px;
 `;
 
 export const Overlay = styled.div<{ $open: boolean }>`
@@ -51,9 +56,8 @@ export const PlusButton = styled.button`
 `;
 
 export const OrdersList = styled.ul`
-  /* Make only the list scrollable inside the fixed panel */
   position: absolute;
-  top: 45px; /* space for the top buttons */
+  top: calc(var(--toolbar-top) + var(--toolbar-height) + var(--toolbar-gap));
   right: 16px;
   bottom: 88px; /* clears the floating + button */
   left: 16px;
@@ -61,16 +65,15 @@ export const OrdersList = styled.ul`
   list-style: none;
   margin: 0;
   padding: 0;
-
   display: flex;
   flex-direction: column;
   gap: 8px;
-
   overflow-y: auto;
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
   scrollbar-gutter: stable;
 `;
+
 
 export const OrderItem = styled.li`
   padding: 8px 10px;
@@ -230,17 +233,24 @@ export const CloseBtn = styled.button`
   }
 `;
 
-/* /src/components/LeftPanel/Styles/style.tsx */
 export const SettingsButton = styled(IconButton)`
   position: absolute;
-  top: var(--toolbar-top, 16px);   /* ← was calc(...) */
+  top: var(--toolbar-top);
   right: 8px;
-  z-index: 1;
+  height: var(--toolbar-height);
+  padding: 0 10px;
+  display: inline-flex;
+  align-items: center;
+  z-index: 2;
 `;
 
 export const ChartButton = styled(IconButton)`
   position: absolute;
-  top: var(--toolbar-top, 16px);   /* ← was calc(...) */
+  top: var(--toolbar-top);
   right: 48px;
-  z-index: 1;
+  height: var(--toolbar-height);
+  padding: 0 10px;
+  display: inline-flex;
+  align-items: center;
+  z-index: 2;
 `;
