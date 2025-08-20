@@ -1,3 +1,5 @@
+// src/commands/theme.rs
+
 use crate::app_state::AppState;
 use crate::db::{ensure_schema, open_db};
 use crate::models::theme::{BaseTheme, ThemeDTO};
@@ -5,11 +7,14 @@ use rusqlite::params;
 use serde_json::Value as Json;
 use std::collections::HashMap;
 
-const DEFAULT_CUSTOM_CONFETTI: [&str; 5] = ["#ef4444", "#22c55e", "#3b82f6", "#eab308", "#a855f7"];
+const DEFAULT_CUSTOM_CONFETTI: [&str; 5] =
+    ["#ef4444", "#22c55e", "#3b82f6", "#eab308", "#a855f7"];
 
 fn sanitize_color(s: &str) -> Option<String> {
     let v = s.trim();
-    if v.is_empty() { return None; }
+    if v.is_empty() {
+        return None;
+    }
     Some(v.to_string())
 }
 
@@ -18,18 +23,25 @@ fn clamp_confetti(mut v: Vec<String>) -> Vec<String> {
     let mut out: Vec<String> = Vec::new();
     for c in v.drain(..) {
         let c = c.trim();
-        if c.is_empty() { continue; }
+        if c.is_empty() {
+            continue;
+        }
         if !out.iter().any(|x| x.eq_ignore_ascii_case(c)) {
             out.push(c.to_string());
         }
-        if out.len() == 5 { break; }
+        if out.len() == 5 {
+            break;
+        }
     }
     out
 }
 
 fn parse_confetti_from_rows(rows: &[(String, String)]) -> Vec<String> {
     // Preferred: a single "confetti" row containing a JSON string array.
-    if let Some((_, json_str)) = rows.iter().find(|(k, _)| k.eq_ignore_ascii_case("confetti")) {
+    if let Some((_, json_str)) = rows
+        .iter()
+        .find(|(k, _)| k.eq_ignore_ascii_case("confetti"))
+    {
         if let Ok(Json::Array(arr)) = serde_json::from_str::<Json>(json_str) {
             let collected = arr
                 .into_iter()
@@ -45,7 +57,10 @@ fn parse_confetti_from_rows(rows: &[(String, String)]) -> Vec<String> {
         .filter_map(|(k, v)| {
             let kl = k.to_ascii_lowercase();
             if kl.starts_with("confetti") {
-                let idx = kl.trim_start_matches("confetti").parse::<usize>().ok()?;
+                let idx = kl
+                    .trim_start_matches("confetti")
+                    .parse::<usize>()
+                    .ok()?;
                 Some((idx, v.clone()))
             } else {
                 None
@@ -54,7 +69,12 @@ fn parse_confetti_from_rows(rows: &[(String, String)]) -> Vec<String> {
         .collect();
 
     legacy.sort_by_key(|(i, _)| *i);
-    clamp_confetti(legacy.into_iter().filter_map(|(_, v)| sanitize_color(&v)).collect())
+    clamp_confetti(
+        legacy
+            .into_iter()
+            .filter_map(|(_, v)| sanitize_color(&v))
+            .collect(),
+    )
 }
 
 #[tauri::command]
@@ -67,7 +87,9 @@ pub fn get_theme_colors(state: tauri::State<AppState>) -> Result<Option<ThemeDTO
         .map_err(|e| e.to_string())?;
 
     let rows_iter = stmt
-        .query_map([], |row| Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?)))
+        .query_map([], |row| {
+            Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
+        })
         .map_err(|e| e.to_string())?;
 
     let mut rows: Vec<(String, String)> = Vec::new();
@@ -85,7 +107,6 @@ pub fn get_theme_colors(state: tauri::State<AppState>) -> Result<Option<ThemeDTO
         .find(|(k, _)| k.eq_ignore_ascii_case("base"))
         .map(|(_, v)| v.as_str())
         .unwrap_or("light");
-
     let base = BaseTheme::from_str_case_insensitive(base_str);
 
     // theme tokens (exclude base and any confetti keys)
@@ -98,24 +119,29 @@ pub fn get_theme_colors(state: tauri::State<AppState>) -> Result<Option<ThemeDTO
         colors.insert(k.clone(), v.clone());
     }
 
-    // effective confetti palette
-    let confetti = match base {
-        BaseTheme::Light => vec!["#000000".to_string()],
-        BaseTheme::Dark => vec!["#ffffff".to_string()],
-        BaseTheme::Custom => {
-            let parsed = parse_confetti_from_rows(&rows);
-            if parsed.is_empty() {
-                DEFAULT_CUSTOM_CONFETTI.iter().map(|s| s.to_string()).collect()
-            } else {
-                parsed
-            }
+    // CONFIGURED palette (if any) from DB
+    let configured = parse_confetti_from_rows(&rows);
+
+    // For the editor:
+    // - If user saved a palette -> return it (any base).
+    // - If base is custom and nothing saved -> show default colorful set.
+    // - If base is light/dark and nothing saved -> return empty.
+    let confetti_for_editor: Vec<String> = if !configured.is_empty() {
+        configured
+    } else {
+        match base {
+            BaseTheme::Custom => DEFAULT_CUSTOM_CONFETTI
+                .iter()
+                .map(|s| s.to_string())
+                .collect(),
+            _ => Vec::new(),
         }
     };
 
     Ok(Some(ThemeDTO {
         base,
         colors,
-        confetti_colors: Some(confetti),
+        confetti_colors: Some(confetti_for_editor),
     }))
 }
 
@@ -159,8 +185,7 @@ pub fn save_theme_colors(
 
     // Insert confetti palette only if provided; keep it under a single JSON key.
     if let Some(colors) = payload.confetti_colors.clone() {
-        // We allow saving even if base is light/dark (so the user can pre-configure),
-        // but it will only be used when base == custom.
+        // Allow saving even if base is light/dark (user can pre-configure).
         let cleaned = clamp_confetti(
             colors
                 .into_iter()
@@ -184,11 +209,30 @@ pub fn save_theme_colors(
     Ok(())
 }
 
-/// Convenience endpoint if you want *just* the palette to feed into canvas-confetti.
+/// Convenience endpoint: EFFECTIVE palette to feed into canvas-confetti.
 #[tauri::command]
 pub fn get_confetti_palette(state: tauri::State<AppState>) -> Result<Vec<String>, String> {
     match get_theme_colors(state) {
-        Ok(Some(dto)) => Ok(dto.confetti_colors.unwrap_or_else(|| vec!["#000000".into()])),
+        Ok(Some(dto)) => {
+            let base = dto.base;
+            let configured_or_default_for_editor = dto.confetti_colors.unwrap_or_default();
+
+            // If the editor returned something (configured or default-custom), use it.
+            // Otherwise fall back to light/dark defaults.
+            let effective = if !configured_or_default_for_editor.is_empty() {
+                configured_or_default_for_editor
+            } else {
+                match base {
+                    BaseTheme::Light => vec!["#000000".into()],
+                    BaseTheme::Dark => vec!["#ffffff".into()],
+                    BaseTheme::Custom => DEFAULT_CUSTOM_CONFETTI
+                        .iter()
+                        .map(|s| s.to_string())
+                        .collect(),
+                }
+            };
+            Ok(effective)
+        }
         Ok(None) => Ok(vec!["#000000".into()]), // default if unset
         Err(e) => Err(e),
     }

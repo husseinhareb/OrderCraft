@@ -1,3 +1,5 @@
+// src/models/theme.rs
+
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -39,8 +41,11 @@ pub struct ThemeDTO {
     pub base: BaseTheme,
     /// token -> color (e.g. "bg": "#ffffff", "overlay": "rgba(0,0,0,0.4)")
     pub colors: HashMap<String, String>,
-    /// Effective confetti palette to use on the client (1..=5 colors).
-    /// - If base=light/dark this will be ["#000000"] or ["#ffffff"].
-    /// - If base=custom this is whatever user configured (up to 5).
+    /// CONFIGURED confetti palette for the editor (0..=5 colors).
+    /// - If a palette was saved, it is returned regardless of base.
+    /// - If base=custom and nothing saved, a default colorful set may be returned.
+    /// - If base=light/dark and nothing saved, this is empty (UI can pad).
+    ///
+    /// Use the `get_confetti_palette` command for the EFFECTIVE palette used at runtime.
     pub confetti_colors: Option<Vec<String>>,
 }
