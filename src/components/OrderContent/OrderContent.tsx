@@ -1,5 +1,7 @@
-import { useEffect, useMemo, useState, type FC } from "react";
+// /src/components/RightPanel/OrderContent.tsx (or wherever this file lives)
+import { useEffect, useMemo, useState, useCallback, type FC } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
 import {
   Wrapper,
   Card,
@@ -56,6 +58,7 @@ const copy = async (text: string) => {
 
 const OrderContent: FC = () => {
   const { opened, openOrderFormForEdit, deleteOrder, setOrderDone, closeFromStack } = useStore();
+  const storeTheme = useStore((s) => s.theme); // "light" | "dark" | "custom"
 
   const activeId = useMemo(() => {
     if (!opened.length) return null;
@@ -68,6 +71,23 @@ const OrderContent: FC = () => {
 
   // for optimistic toggle
   const [toggling, setToggling] = useState(false);
+
+  // Confetti palette (computed server-side; may be 1..5 colors)
+  const [confettiPalette, setConfettiPalette] = useState<string[]>(["#000000"]);
+
+  const fetchPalette = useCallback(async () => {
+    try {
+      const colors = await invoke<string[]>("get_confetti_palette");
+      if (Array.isArray(colors) && colors.length > 0) {
+        setConfettiPalette(colors.slice(0, 5));
+        return;
+      }
+    } catch {
+      /* ignore */
+    }
+    // Fallback if invoke fails or returns nothing
+    setConfettiPalette(storeTheme === "dark" ? ["#ffffff"] : ["#000000"]);
+  }, [storeTheme]);
 
   useEffect(() => {
     let cancelled = false;
@@ -93,6 +113,55 @@ const OrderContent: FC = () => {
     };
   }, [activeId]);
 
+  // load / refresh confetti palette whenever theme changes
+  useEffect(() => {
+    (async () => {
+      await fetchPalette();
+    })();
+  }, [storeTheme, fetchPalette]);
+
+  // also refresh palette when backend announces a theme/confetti update
+  useEffect(() => {
+    let unlisten: (() => void) | undefined;
+    (async () => {
+      try {
+        unlisten = await listen("theme:updated", async () => {
+          await fetchPalette();
+        });
+      } catch {
+        /* ignore */
+      }
+    })();
+    return () => {
+      unlisten?.();
+    };
+  }, [fetchPalette]);
+
+  const triggerConfetti = useCallback(async () => {
+    const prefersReducedMotion =
+      typeof window !== "undefined" &&
+      window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+
+    if (prefersReducedMotion) return;
+
+    try {
+      const { default: confetti } = await import("canvas-confetti");
+      confetti({
+        particleCount: 420,
+        spread: 210,
+        startVelocity: 50,
+        gravity: 0.9,
+        decay: 0.9,
+        scalar: 1.0,
+        origin: { x: 0.5, y: 0.5 },
+        zIndex: 1200,
+        colors: confettiPalette && confettiPalette.length > 0 ? confettiPalette : ["#000000"],
+      });
+    } catch {
+      // ignore if confetti fails to load
+    }
+  }, [confettiPalette]);
+
   const toggleDone = async () => {
     if (!data || toggling) return;
     const current = !!data.done;
@@ -103,6 +172,8 @@ const OrderContent: FC = () => {
     setToggling(true);
     try {
       await setOrderDone(data.id, next);
+      // Fire confetti only when marking as done
+      if (next) await triggerConfetti();
       // Optionally re-fetch to stay perfectly in sync with backend:
       // const fresh = await invoke<OrderDetail>("get_order", { id: data.id });
       // setData(fresh);
