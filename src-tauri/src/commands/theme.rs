@@ -1,11 +1,11 @@
 // src/commands/theme.rs
-
 use crate::app_state::AppState;
 use crate::db::{ensure_schema, open_db};
 use crate::models::theme::{BaseTheme, ThemeDTO};
 use rusqlite::params;
-use serde_json::Value as Json;
+use serde_json::{json, Value as Json};
 use std::collections::HashMap;
+use tauri::Emitter; // <- v2: emit/emit_to/emit_filter live on Emitter
 
 const DEFAULT_CUSTOM_CONFETTI: [&str; 5] =
     ["#ef4444", "#22c55e", "#3b82f6", "#eab308", "#a855f7"];
@@ -38,10 +38,7 @@ fn clamp_confetti(mut v: Vec<String>) -> Vec<String> {
 
 fn parse_confetti_from_rows(rows: &[(String, String)]) -> Vec<String> {
     // Preferred: a single "confetti" row containing a JSON string array.
-    if let Some((_, json_str)) = rows
-        .iter()
-        .find(|(k, _)| k.eq_ignore_ascii_case("confetti"))
-    {
+    if let Some((_, json_str)) = rows.iter().find(|(k, _)| k.eq_ignore_ascii_case("confetti")) {
         if let Ok(Json::Array(arr)) = serde_json::from_str::<Json>(json_str) {
             let collected = arr
                 .into_iter()
@@ -57,10 +54,7 @@ fn parse_confetti_from_rows(rows: &[(String, String)]) -> Vec<String> {
         .filter_map(|(k, v)| {
             let kl = k.to_ascii_lowercase();
             if kl.starts_with("confetti") {
-                let idx = kl
-                    .trim_start_matches("confetti")
-                    .parse::<usize>()
-                    .ok()?;
+                let idx = kl.trim_start_matches("confetti").parse::<usize>().ok()?;
                 Some((idx, v.clone()))
             } else {
                 None
@@ -87,9 +81,7 @@ pub fn get_theme_colors(state: tauri::State<AppState>) -> Result<Option<ThemeDTO
         .map_err(|e| e.to_string())?;
 
     let rows_iter = stmt
-        .query_map([], |row| {
-            Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
-        })
+        .query_map([], |row| Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?)))
         .map_err(|e| e.to_string())?;
 
     let mut rows: Vec<(String, String)> = Vec::new();
@@ -130,10 +122,7 @@ pub fn get_theme_colors(state: tauri::State<AppState>) -> Result<Option<ThemeDTO
         configured
     } else {
         match base {
-            BaseTheme::Custom => DEFAULT_CUSTOM_CONFETTI
-                .iter()
-                .map(|s| s.to_string())
-                .collect(),
+            BaseTheme::Custom => DEFAULT_CUSTOM_CONFETTI.iter().map(|s| s.to_string()).collect(),
             _ => Vec::new(),
         }
     };
@@ -147,13 +136,15 @@ pub fn get_theme_colors(state: tauri::State<AppState>) -> Result<Option<ThemeDTO
 
 #[tauri::command]
 pub fn save_theme_colors(
+    app: tauri::AppHandle, // v2 injects this automatically
     state: tauri::State<AppState>,
     payload: ThemeDTO,
 ) -> Result<(), String> {
     let mut conn = open_db(&state.db_path).map_err(|e| e.to_string())?;
     ensure_schema(&conn).map_err(|e| e.to_string())?;
 
-    let base_str = payload.base.as_str();
+    let base = payload.base;
+    let base_str = base.as_str();
 
     let tx = conn.transaction().map_err(|e| e.to_string())?;
 
@@ -183,15 +174,10 @@ pub fn save_theme_colors(
         .map_err(|e| e.to_string())?;
     }
 
-    // Insert confetti palette only if provided; keep it under a single JSON key.
+    // Insert confetti palette (single JSON row) if provided.
+    let mut cleaned_confetti: Vec<String> = Vec::new();
     if let Some(colors) = payload.confetti_colors.clone() {
-        // Allow saving even if base is light/dark (user can pre-configure).
-        let cleaned = clamp_confetti(
-            colors
-                .into_iter()
-                .filter_map(|c| sanitize_color(&c))
-                .collect(),
-        );
+        let cleaned = clamp_confetti(colors.into_iter().filter_map(|c| sanitize_color(&c)).collect());
         if !cleaned.is_empty() {
             let json = serde_json::to_string(&cleaned).map_err(|e| e.to_string())?;
             tx.execute(
@@ -202,10 +188,33 @@ pub fn save_theme_colors(
                 params![json],
             )
             .map_err(|e| e.to_string())?;
+            cleaned_confetti = cleaned;
         }
     }
 
     tx.commit().map_err(|e| e.to_string())?;
+
+    // ---- Notify the frontend so it can refresh immediately ----
+    // Effective palette: prefer configured; otherwise fall back based on base.
+    let effective: Vec<String> = if !cleaned_confetti.is_empty() {
+        cleaned_confetti
+    } else {
+        match base {
+            BaseTheme::Light => vec!["#000000".into()],
+            BaseTheme::Dark => vec!["#ffffff".into()],
+            BaseTheme::Custom => DEFAULT_CUSTOM_CONFETTI.iter().map(|s| s.to_string()).collect(),
+        }
+    };
+
+    // v2: use AppHandle::emit (global event)
+    let _ = app.emit(
+        "theme:updated",
+        json!({
+            "base": base_str,
+            "effectiveConfetti": effective,
+        }),
+    );
+
     Ok(())
 }
 
@@ -217,8 +226,6 @@ pub fn get_confetti_palette(state: tauri::State<AppState>) -> Result<Vec<String>
             let base = dto.base;
             let configured_or_default_for_editor = dto.confetti_colors.unwrap_or_default();
 
-            // If the editor returned something (configured or default-custom), use it.
-            // Otherwise fall back to light/dark defaults.
             let effective = if !configured_or_default_for_editor.is_empty() {
                 configured_or_default_for_editor
             } else {
@@ -233,7 +240,7 @@ pub fn get_confetti_palette(state: tauri::State<AppState>) -> Result<Vec<String>
             };
             Ok(effective)
         }
-        Ok(None) => Ok(vec!["#000000".into()]), // default if unset
+        Ok(None) => Ok(vec!["#000000".into()]),
         Err(e) => Err(e),
     }
 }
