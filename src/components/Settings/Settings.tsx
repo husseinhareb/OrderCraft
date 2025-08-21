@@ -105,6 +105,8 @@ const Settings: FC = () => {
   const [companies, setCompanies] = useState<DeliveryCompany[]>([]);
   const [newCompany, setNewCompany] = useState("");
 
+  const firstValid = confettiColors.find((c) => isHexColor(c));
+
   const sortedCompanies = useMemo(
     () =>
       [...companies].sort((a, b) =>
@@ -493,7 +495,12 @@ const Settings: FC = () => {
                   }}
                 >
                   {confettiColors.map((c, i) => {
-                    const hex = isHexColor(c) ? c : "#000000";
+                    // If this slot is empty/invalid, show the first valid color instead of black.
+                    // This mirrors the real runtime behavior when DB deduped your palette.
+                    const displayedHex = isHexColor(c)
+                      ? c
+                      : (firstValid ?? "#000000"); // still fall back to black if none set yet
+
                     return (
                       <Field key={`confetti-${i}`} style={{ maxWidth: "none" }}>
                         <Label htmlFor={`confetti-${i}`}>Color {i + 1}</Label>
@@ -501,15 +508,22 @@ const Settings: FC = () => {
                           <Input
                             id={`confetti-${i}`}
                             type="color"
-                            value={hex}
+                            value={displayedHex}
                             onChange={(e) => updateConfettiAt(i, e.target.value)}
                             aria-label={`Confetti color ${i + 1} (picker)`}
                             style={{ width: 48, padding: 0, height: 36 }}
+                            title={
+                              isHexColor(c)
+                                ? c
+                                : firstValid
+                                  ? `Effective: ${firstValid} (empty slot mirrors first color)`
+                                  : `Pick a color`
+                            }
                           />
                           <Input
                             value={c}
                             onChange={(e) => updateConfettiAt(i, e.target.value)}
-                            placeholder="#000000"
+                            placeholder={firstValid ?? "#000000"}
                             aria-label={`Confetti color ${i + 1} (hex)`}
                           />
                         </InlineWrap>
