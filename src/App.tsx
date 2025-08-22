@@ -11,7 +11,7 @@ import RightPanel from "./components/RightPanel/RightPanel";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faBars } from "@fortawesome/free-solid-svg-icons";
 
-const MENU_ID = "left-menu";
+const MENU_ID = "left-menu"; // keep if you'll add this id inside LeftPanel later
 
 export default function App() {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -42,13 +42,13 @@ export default function App() {
     <ThemeProvider theme={theme}>
       <GlobalStyle />
       <div className="app-container" data-theme={theme.name}>
-        {/* Full-height rail with red right border */}
+        {/* Full-height rail with right border */}
         <aside className="left-rail" aria-label="Primary">
           <button
             type="button"
             className="hamburger"
             aria-label={menuOpen ? "Close menu" : "Open menu"}
-            aria-controls={MENU_ID}
+            aria-controls={MENU_ID}  // harmless if the element doesn't exist yet
             aria-expanded={menuOpen}
             aria-haspopup="menu"
             onClick={toggleMenu}
@@ -59,8 +59,8 @@ export default function App() {
 
         {/* Main area shifts to the right of the rail */}
         <main className="main-area">
-          {/* Ensure LeftPanel forwards id to its root DOM element */}
-          <LeftPanel id={MENU_ID} open={menuOpen} onClose={() => setMenuOpen(false)} />
+          {/* Removed id prop to satisfy LeftPanelProps */}
+          <LeftPanel open={menuOpen} onClose={() => setMenuOpen(false)} />
           <RightPanel />
         </main>
       </div>

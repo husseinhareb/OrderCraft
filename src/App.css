@@ -9,7 +9,7 @@ html, body, #root { height: 100%; width: 100%; }
   /* Layout tokens */
   --rail-width: 48px;
   --rail-border-width: 3px;
-  --rail-border-color: black;
+  --rail-border-color: black; /* change to #ff2a2a for red */
 
   --hamburger-size: 40px;
   --hamburger-padding-inline: 8px;
@@ -26,7 +26,7 @@ html, body, #root { height: 100%; width: 100%; }
   background: transparent;
 }
 
-/* Full-height left rail with red right border */
+/* Full-height left rail with right border */
 .left-rail {
   position: fixed;
   top: 0;
@@ -63,8 +63,7 @@ html, body, #root { height: 100%; width: 100%; }
   width: auto;
 }
 
-/* Optional: if you have a large fixed left panel on wide screens, keep this if needed
-   (your RightPanel/LeftPanel can still control their own layout). */
+/* Optional desktop tweaks */
 @media (min-width: 1024px) {
-  /* Add any desktop-specific spacing rules here if required */
+  /* Add desktop-specific spacing rules here if needed */
 }
