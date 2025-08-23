@@ -2,6 +2,8 @@
 import { styled } from "styled-components";
 
 export const OpenedBar = styled.div`
+  /* optional: make it stick to the top of the panel */
+  position: sticky;
   top: 0;
   z-index: 1045;
   background: ${({ theme }) => theme.colors.surface};
@@ -12,22 +14,29 @@ export const OpenedList = styled.div`
   display: flex;
   flex-wrap: wrap;
   height: 100%;
+
+  /* Draw the trailing underline so the bar spans full width */
+  &::after {
+    content: "";
+    flex: 1 1 auto;
+    border-bottom: 1px solid ${({ theme }) => theme.colors.borderStrong};
+  }
 `;
 
 export const OpenedChip = styled.button`
   display: inline-flex;
   align-items: center;
+  height: 100%;                /* align bottom border with the bar line */
   gap: 8px;
   padding: 6px 10px;
   border: 1px solid ${({ theme }) => theme.colors.borderStrong};
   background: ${({ theme }) => theme.colors.surface};
   color: ${({ theme }) => theme.colors.text};
   cursor: pointer;
-  position: relative; 
+  position: relative;
 
-  & + & {
-    margin-left: -1px;
-  }
+  /* collapse adjoining borders */
+  & + & { margin-left: -1px; }
 
   &:hover {
     background: ${({ theme }) => theme.colors.hover};
@@ -41,7 +50,6 @@ export const OpenedChip = styled.button`
     text-overflow: ellipsis;
   }
 `;
-
 
 export const CloseChipBtn = styled.button`
   border: 0;
