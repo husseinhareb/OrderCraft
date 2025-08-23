@@ -41,11 +41,7 @@ html, body, #root { height: 100%; width: 100%; }
 
 /* When the menu is open, hide the border */
 .left-rail.is-open {
-  --rail-border-color: transparent; /* keeps layout, removes the line */
-  /* Optional extras:
-     pointer-events: none;      // if you want to disable clicks on the rail
-     visibility: hidden;        // if you want to hide the rail entirely
-  */
+  --rail-border-color: transparent;
 }
 
 .hamburger {

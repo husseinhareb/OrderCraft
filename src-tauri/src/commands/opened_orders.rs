@@ -2,23 +2,32 @@
 use crate::app_state::AppState;
 use crate::db::{ensure_schema, open_db};
 use crate::models::orders::OpenedOrderItem;
-use rusqlite::{params};
+use rusqlite::{params, TransactionBehavior};
 
+/// Open an order without reordering the list:
+/// - If the order is already present, leave its position as-is.
+/// - If it's new, append it to the end (highest position).
 #[tauri::command]
 pub fn open_order(state: tauri::State<AppState>, id: i64) -> Result<(), String> {
     let mut conn = open_db(&state.db_path).map_err(|e| e.to_string())?;
     ensure_schema(&conn).map_err(|e| e.to_string())?;
 
-    let tx = conn.transaction().map_err(|e| e.to_string())?;
-    tx.execute("DELETE FROM opened_orders WHERE order_id = ?1", params![id])
+    let tx = conn
+        .transaction_with_behavior(TransactionBehavior::Immediate)
         .map_err(|e| e.to_string())?;
-    tx.execute("UPDATE opened_orders SET position = position + 1", [])
-        .map_err(|e| e.to_string())?;
+
+    // Insert only if missing; append to the end by using MAX(position)+1.
     tx.execute(
-        "INSERT INTO opened_orders (order_id, position) VALUES (?1, 1)",
+        r#"
+        INSERT INTO opened_orders (order_id, position)
+        SELECT ?1, COALESCE(MAX(position), 0) + 1
+        FROM opened_orders
+        WHERE NOT EXISTS (SELECT 1 FROM opened_orders WHERE order_id = ?1)
+        "#,
         params![id],
     )
     .map_err(|e| e.to_string())?;
+
     tx.commit().map_err(|e| e.to_string())?;
     Ok(())
 }
@@ -50,7 +59,9 @@ pub fn get_opened_orders(state: tauri::State<AppState>) -> Result<Vec<OpenedOrde
         .map_err(|e| e.to_string())?;
 
     let mut out = Vec::new();
-    for r in rows { out.push(r.map_err(|e| e.to_string())?); }
+    for r in rows {
+        out.push(r.map_err(|e| e.to_string())?);
+    }
     Ok(out)
 }
 
@@ -59,7 +70,10 @@ pub fn remove_opened_order(state: tauri::State<AppState>, id: i64) -> Result<(),
     let mut conn = open_db(&state.db_path).map_err(|e| e.to_string())?;
     ensure_schema(&conn).map_err(|e| e.to_string())?;
 
-    let tx = conn.transaction().map_err(|e| e.to_string())?;
+    let tx = conn
+        .transaction_with_behavior(TransactionBehavior::Immediate)
+        .map_err(|e| e.to_string())?;
+
     tx.execute("DELETE FROM opened_orders WHERE order_id = ?1", params![id])
         .map_err(|e| e.to_string())?;
 
@@ -73,10 +87,13 @@ pub fn remove_opened_order(state: tauri::State<AppState>, id: i64) -> Result<(),
             .map_err(|e| e.to_string())?;
 
         let mut tmp = Vec::new();
-        for r in ids { tmp.push(r.map_err(|e| e.to_string())?); }
+        for r in ids {
+            tmp.push(r.map_err(|e| e.to_string())?);
+        }
         tmp
     };
 
+    // Re-number positions densely starting from 1, keeping relative order.
     for (i, oid) in list.iter().enumerate() {
         tx.execute(
             "UPDATE opened_orders SET position = ?1 WHERE order_id = ?2",

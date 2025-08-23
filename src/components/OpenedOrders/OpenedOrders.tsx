@@ -24,7 +24,7 @@ const OpenedOrders: FC = () => {
           <OpenedChip
             key={o.orderId}
             title={o.articleName}
-            onClick={() => openContent(o.orderId)}     // <-- show content, not form
+            onClick={() => openContent(o.orderId)}      
           >
             <span className="title">{o.articleName}</span>
             <CloseChipBtn

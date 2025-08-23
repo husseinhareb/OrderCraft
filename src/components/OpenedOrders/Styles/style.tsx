@@ -23,9 +23,15 @@ export const OpenedChip = styled.button`
   background: ${({ theme }) => theme.colors.surface};
   color: ${({ theme }) => theme.colors.text};
   cursor: pointer;
+  position: relative; 
+
+  & + & {
+    margin-left: -1px;
+  }
 
   &:hover {
     background: ${({ theme }) => theme.colors.hover};
+    z-index: 1;
   }
 
   .title {
@@ -35,6 +41,7 @@ export const OpenedChip = styled.button`
     text-overflow: ellipsis;
   }
 `;
+
 
 export const CloseChipBtn = styled.button`
   border: 0;
