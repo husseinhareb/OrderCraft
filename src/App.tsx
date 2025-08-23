@@ -11,23 +11,21 @@ import RightPanel from "./components/RightPanel/RightPanel";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faBars } from "@fortawesome/free-solid-svg-icons";
 
-const MENU_ID = "left-menu"; // keep if you'll add this id inside LeftPanel later
+const MENU_ID = "left-menu";
 
 export default function App() {
   const [menuOpen, setMenuOpen] = useState(false);
 
-  const themeName = useStore((s) => s.theme);        // "light" | "dark" | "custom"
-  const customTheme = useStore((s) => s.customTheme); // { base, colors } | null
+  const themeName = useStore((s) => s.theme);
+  const customTheme = useStore((s) => s.customTheme);
   const loadCustomTheme = useStore((s) => s.loadCustomTheme);
 
-  // Ensure custom palette is available on mount (safe no-op for light/dark)
   useEffect(() => {
     loadCustomTheme();
   }, [loadCustomTheme]);
 
   const theme = useMemo(() => buildTheme(themeName, customTheme), [themeName, customTheme]);
 
-  // Close the menu with Escape for better UX
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") setMenuOpen(false);
@@ -42,13 +40,13 @@ export default function App() {
     <ThemeProvider theme={theme}>
       <GlobalStyle />
       <div className="app-container" data-theme={theme.name}>
-        {/* Full-height rail with right border */}
-        <aside className="left-rail" aria-label="Primary">
+        {/* Full-height rail; border hides when menu is open */}
+        <aside className={`left-rail ${menuOpen ? "is-open" : ""}`} aria-label="Primary">
           <button
             type="button"
             className="hamburger"
             aria-label={menuOpen ? "Close menu" : "Open menu"}
-            aria-controls={MENU_ID}  // harmless if the element doesn't exist yet
+            aria-controls={MENU_ID}
             aria-expanded={menuOpen}
             aria-haspopup="menu"
             onClick={toggleMenu}
@@ -57,9 +55,7 @@ export default function App() {
           </button>
         </aside>
 
-        {/* Main area shifts to the right of the rail */}
         <main className="main-area">
-          {/* Removed id prop to satisfy LeftPanelProps */}
           <LeftPanel open={menuOpen} onClose={() => setMenuOpen(false)} />
           <RightPanel />
         </main>

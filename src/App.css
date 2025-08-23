@@ -2,23 +2,18 @@
 
 /* Reset / base */
 * { margin: 0; padding: 0; box-sizing: border-box; }
-
 html, body, #root { height: 100%; width: 100%; }
 
 :root{
-  /* Layout tokens */
   --rail-width: 48px;
   --rail-border-width: 3px;
-  --rail-border-color: black; /* change to #ff2a2a for red */
-
+  --rail-border-color: black; /* use #ff2a2a for red */
   --hamburger-size: 40px;
   --hamburger-padding-inline: 8px;
   --hamburger-padding-block: 6px;
-
-  --main-gap: 0px; /* extra space between rail and content if desired */
+  --main-gap: 0px;
 }
 
-/* App shell */
 .app-container {
   min-height: 100vh;
   width: 100%;
@@ -26,7 +21,6 @@ html, body, #root { height: 100%; width: 100%; }
   background: transparent;
 }
 
-/* Full-height left rail with right border */
 .left-rail {
   position: fixed;
   top: 0;
@@ -38,11 +32,20 @@ html, body, #root { height: 100%; width: 100%; }
   align-items: flex-start;
   justify-content: center;
   padding-top: 8px;
-  background: transparent; /* or match your theme background */
+  background: transparent;
   z-index: 1100;
+  transition: border-color 120ms ease;
 }
 
-/* Hamburger button inside the rail */
+/* When the menu is open, hide the border */
+.left-rail.is-open {
+  --rail-border-color: transparent;           /* keeps layout, removes the line */
+  /* Optional extras:
+     pointer-events: none;      // if you want to disable clicks on the rail
+     visibility: hidden;        // if you want to hide the rail entirely
+  */
+}
+
 .hamburger {
   width: var(--hamburger-size);
   height: 32px;
@@ -56,14 +59,12 @@ html, body, #root { height: 100%; width: 100%; }
   cursor: pointer;
 }
 
-/* Main application area sits to the right of the rail */
 .main-area {
   margin-left: calc(var(--rail-width) + var(--main-gap));
   min-height: 100vh;
   width: auto;
 }
 
-/* Optional desktop tweaks */
 @media (min-width: 1024px) {
-  /* Add desktop-specific spacing rules here if needed */
+  /* desktop-specific tweaks if needed */
 }
