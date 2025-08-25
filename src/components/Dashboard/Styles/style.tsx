@@ -145,21 +145,45 @@ export const HeatmapGrid = styled.div<{ $cell: number; $gap: number }>`
   gap: ${({ $gap }) => $gap}px;
 `;
 
+const clamp01 = (n: number) => Math.max(0, Math.min(1, Number.isFinite(n) ? n : 0));
+const withAlpha = (color: string, alpha: number) => {
+  const a = clamp01(alpha);
+
+  // #rgb/#rgba/#rrggbb/#rrggbbaa
+  if (color.startsWith("#")) {
+    let hex = color.slice(1);
+    if (hex.length === 3 || hex.length === 4) hex = hex.split("").map((c) => c + c).join("");
+    const r = parseInt(hex.slice(0, 2), 16);
+    const g = parseInt(hex.slice(2, 4), 16);
+    const b = parseInt(hex.slice(4, 6), 16);
+    return `rgba(${r}, ${g}, ${b}, ${a})`;
+  }
+
+  // rgb()/rgba()
+  const m = color.match(/rgba?\(([\d.]+)[,\s]+([\d.]+)[,\s]+([\d.]+)(?:[,\s/]+([\d.]+))?\)/i);
+  if (m) {
+    const [, r, g, b, baseA] = m;
+    const ba = baseA ? clamp01(parseFloat(baseA)) : 1;
+    return `rgba(${r}, ${g}, ${b}, ${clamp01(a * ba)})`;
+  }
+
+  // fallback
+  return color;
+};
+
+/* ===== Heatmap ===== */
 export const HeatmapCell = styled.div<{ $alpha: number; $cell: number }>`
   width: ${({ $cell }) => $cell}px;
   height: ${({ $cell }) => $cell}px;
   border-radius: 4px;
-  background: ${({ theme, $alpha }) =>
-    theme.name === "dark"
-      ? `rgba(245, 247, 250, ${$alpha})`
-      : `rgba(17, 17, 17, ${$alpha})`};
+  /* use theme.colors.text for ANY theme (light/dark/custom), clamp alpha */
+  background: ${({ theme, $alpha }) => withAlpha(theme.colors.text, Math.min(0.9, Math.max(0, $alpha)))};
 `;
 
 export const HeatmapZeroCell = styled(HeatmapCell)`
-  background: ${({ theme }) =>
-    theme.name === "dark" ? "rgba(255,255,255,0.06)" : "rgba(17,17,17,0.06)"};
+  /* faint baseline tint that adapts to any theme */
+  background: ${({ theme }) => withAlpha(theme.colors.text, 0.06)};
 `;
-
 /* ===== Misc layout/util ===== */
 export const TwoCol = styled.div`
   display: grid;
@@ -248,7 +272,7 @@ export const FlexRow = styled.div<{ $gap?: number; $align?: string; $justify?: s
 
 export const H2 = styled.h2`
   margin-top: 20px;
-  margin-buttom: 20px
+  margin-bottom: 20px
 `;
 
 export const IconButton = styled.button`

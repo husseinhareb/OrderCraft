@@ -61,7 +61,20 @@ html, body, #root { height: 100%; width: 100%; }
   margin-left: calc(var(--rail-width) + var(--main-gap));
   min-height: 100vh;
   width: auto;
+  transition: margin-left 180ms ease;
+
+  /* defaults (focused) */
+  --opened-dim-opacity: 1;
+  --opened-dim-filter: none;
 }
+
+/* When the left rail is open, remove the rail offset and dim the bar */
+.left-rail.is-open + .main-area {
+  margin-left: 0;
+  --opened-dim-opacity: 0.65;                /* tweak to taste */
+  --opened-dim-filter: saturate(0.85) brightness(0.95);
+}
+
 
 @media (min-width: 1024px) {
   /* desktop-specific tweaks if needed */

@@ -1,13 +1,16 @@
 // /src/components/OpenedOrders/Styles/style.tsx
 import { styled } from "styled-components";
-
 export const OpenedBar = styled.div`
-  /* optional: make it stick to the top of the panel */
   position: sticky;
   top: 0;
   z-index: 1045;
   background: ${({ theme }) => theme.colors.surface};
   height: 40px;
+
+  /* dim when left panel is open (values come from App.css) */
+  opacity: var(--opened-dim-opacity, 1);
+  filter: var(--opened-dim-filter, none);
+  transition: opacity 140ms ease, filter 140ms ease;
 `;
 
 export const OpenedList = styled.div`
