@@ -4,16 +4,16 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { useStore } from "../../store/store";
 
-import type { DashboardData } from "./types";
+import type { DashboardData, NameCount } from "./types";
 import { normalizeLeadBins } from "./utils";
 import KpiGrid from "./KpiGrid";
 import TrendAndMix from "./TrendAndMix";
-import LeadAndTopArticles from "./LeadAndTopArticles";
 import DeliverySchedule from "./DeliverySchedule";
 import ActivityHeatmap from "./ActivityHeatmap";
 import ExceptionsTable from "./ExceptionsTable";
-import { Card } from "./ui";
-import { FlexRow, H2, IconButton } from "./Styles/style";
+import TopDeliveryCompaniesCard from "./TopDeliveryCompaniesCard";
+import { Card, MiniBars } from "./ui";
+import { FlexRow, H2, IconButton, Grid, FinePrint } from "./Styles/style";
 
 const Dashboard: FC = () => {
   const closeDashboard = useStore((s) => s.closeDashboard);
@@ -45,13 +45,16 @@ const Dashboard: FC = () => {
     [data]
   );
 
-  const leadBins = useMemo(
-    () => normalizeLeadBins(data?.leadTimeHistogram),
-    [data]
-  );
+  const leadBins = useMemo(() => normalizeLeadBins(data?.leadTimeHistogram), [data]);
+
+  // lifetime company share (falls back safely if backend hasn't exposed it yet)
+  const companyShareLifetime: NameCount[] = useMemo(() => {
+    const raw = (data as any)?.companyShareLifetime ?? data?.companyShare90d ?? [];
+    return Array.isArray(raw) ? (raw as NameCount[]) : [];
+  }, [data]);
 
   return (
-    <div style={{"margin" : "10px"}}>
+    <div style={{ margin: "10px" }}>
       <Header onClose={closeDashboard} />
 
       {loading && (
@@ -73,17 +76,52 @@ const Dashboard: FC = () => {
 
       {!loading && !err && data && (
         <>
+          {/* KPIs */}
           <KpiGrid k={data.kpis} />
+
+          {/* Row: Orders trend + Top delivery (last 90d) */}
           <TrendAndMix
             kpis={data.kpis}
             weeklySeries={weeklySeries}
             companyShare90d={data.companyShare90d}
           />
-          <LeadAndTopArticles
-            leadBins={leadBins}
-            topArticles={data.topArticles}
-            topCity={data.kpis.topCity}
-          />
+
+          {/* Row: Top delivery (lifetime) + Top articles */}
+          <Grid $cols={2} $gap={12}>
+            <TopDeliveryCompaniesCard
+              title="Top delivery company (lifetime)"
+              companies={companyShareLifetime}
+            />
+
+            <Card title="Top articles">
+              <MiniBars
+                data={(data.topArticles ?? []).map((a) => ({
+                  label: a.name,
+                  value: a.count,
+                }))}
+                height={140}
+                scroll
+                minColPx={32}
+              />
+              <FinePrint>
+                City leader: <strong>{data.kpis.topCity?.name ?? "—"}</strong>
+              </FinePrint>
+            </Card>
+          </Grid>
+
+          {/* Row: Planned lead time distribution (full width) */}
+          <Grid $cols={1} $gap={12}>
+            <Card title="Planned lead time distribution (days)">
+              <MiniBars
+                data={leadBins.map((b) => ({ label: String(b.leadDays), value: b.count }))}
+                height={140}
+                scroll
+                minColPx={28}
+              />
+            </Card>
+          </Grid>
+
+          {/* Rest */}
           <DeliverySchedule schedule={data.deliveryScheduleWeeks} />
           <ActivityHeatmap cells={data.activityHeatmap} />
           <ExceptionsTable exceptions={data.exceptions} />
