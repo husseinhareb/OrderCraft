@@ -111,13 +111,27 @@ const LeftPanel: FC<LeftPanelProps> = ({ open, onClose }) => {
   const openContent = useCallback(
     (id: number) => {
       closeOrderForm?.();
-      const { closeDashboard, closeSettings, openInStack } = useStore.getState();
-      closeDashboard?.(); // ensure right panel exits dashboard mode
-      closeSettings?.(); // ensure right panel exits settings mode
-      openInStack(id);
+      const state = useStore.getState();
+
+      state.closeDashboard?.();
+      state.closeSettings?.();
+
+      // Focus without reordering
+      if (typeof (state as any).focusInStack === "function") {
+        (state as any).focusInStack(id);
+      } else if (typeof (state as any).setActiveOrderId === "function") {
+        (state as any).setActiveOrderId(id);
+      }
+
+      // Only append if missing
+      const exists = state.opened.some((x) => x.orderId === id);
+      if (!exists) {
+        state.openInStack(id);
+      }
     },
     [closeOrderForm]
   );
+
 
   const handleDelete = useCallback(
     async (id: number) => {

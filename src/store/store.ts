@@ -14,7 +14,7 @@ export type OrderListItem = {
 export type OpenedOrder = {
   orderId: number;
   articleName: string;
-  position: number; // 1 is top (most recently opened)
+  position: number; // 1-based position; kept by backend
 };
 
 /* ---------- Theme helpers ---------- */
@@ -73,8 +73,8 @@ type AppState = {
   openedLoading: boolean;
   openedError: string | null;
   fetchOpened: () => Promise<void>;
-  openInStack: (id: number) => Promise<void>; // promote/add to top
-  closeFromStack: (id: number) => Promise<void>; // remove from stack
+  openInStack: (id: number) => Promise<void>; // append if missing; do NOT reorder
+  closeFromStack: (id: number) => Promise<void>;
   openInStackAndEdit: (id: number) => Promise<void>;
 };
 
@@ -232,25 +232,29 @@ export const useStore = create<AppState>((set, get) => ({
   },
 
   openInStack: async (id: number) => {
-    // Optimistic: move to top in local state right away
+    // Append-only optimistic update: if already present, do nothing (no reorder)
     set((s) => {
-      const rest = s.opened.filter((x) => x.orderId !== id);
-      const existing = s.opened.find((x) => x.orderId === id);
-      const top: OpenedOrder = existing
-        ? { ...existing, position: 1 }
-        : {
-            orderId: id,
-            articleName:
-              s.orders.find((o) => o.id === id)?.articleName ?? String(id),
-            position: 1,
-          };
-      const reindexed = [top, ...rest].map((x, i) => ({
-        ...x,
-        position: i + 1,
-      }));
+      const exists = s.opened.some((x) => x.orderId === id);
+      if (exists) {
+        return {
+          showDashboard: false,
+          showSettings: false,
+        };
+      }
+
+      const nextPos =
+        s.opened.length === 0
+          ? 1
+          : Math.max(...s.opened.map((x) => x.position)) + 1;
+
+      const articleName =
+        s.orders.find((o) => o.id === id)?.articleName ?? String(id);
+
       return {
-        opened: reindexed,
-        // keep right panel in "orders" mode whenever an order is opened
+        opened: [
+          ...s.opened,
+          { orderId: id, articleName, position: nextPos },
+        ],
         showDashboard: false,
         showSettings: false,
       };
@@ -258,11 +262,10 @@ export const useStore = create<AppState>((set, get) => ({
 
     try {
       await invoke("open_order", { id });
-      // refresh from DB to ensure positions are exact
+      // sync from DB (which also appends); keeps positions canonical
       await get().fetchOpened();
     } catch (e: any) {
       set({ openedError: e?.toString?.() ?? "Failed to open order" });
-      // best-effort: reload from DB to correct optimistic state
       await get().fetchOpened();
     }
   },

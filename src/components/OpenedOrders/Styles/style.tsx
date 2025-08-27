@@ -1,11 +1,14 @@
-// /src/components/OpenedOrders/Styles/style.tsx
 import { styled } from "styled-components";
+
 export const OpenedBar = styled.div`
   position: sticky;
   top: 0;
   z-index: 1045;
   background: ${({ theme }) => theme.colors.surface};
   height: 40px;
+
+  /* A clean underline across the whole bar (no wrap hack needed) */
+  border-bottom: 1px solid ${({ theme }) => theme.colors.borderStrong};
 
   /* dim when left panel is open (values come from App.css) */
   opacity: var(--opened-dim-opacity, 1);
@@ -15,21 +18,29 @@ export const OpenedBar = styled.div`
 
 export const OpenedList = styled.div`
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   height: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
 
-  /* Draw the trailing underline so the bar spans full width */
-  &::after {
-    content: "";
-    flex: 1 1 auto;
-    border-bottom: 1px solid ${({ theme }) => theme.colors.borderStrong};
+  /* hide scrollbars, keep scrolling with wheel/trackpad */
+  scrollbar-width: none;         
+  -ms-overflow-style: none;      
+  &::-webkit-scrollbar {         
+    width: 0;
+    height: 0;
   }
 `;
 
+
+
 export const OpenedChip = styled.button`
+  flex: 0 1 auto;             /* allow shrinking but keep in one row */
   display: inline-flex;
   align-items: center;
-  height: 100%;                /* align bottom border with the bar line */
+  height: 100%;
   gap: 8px;
   padding: 6px 10px;
   border: 1px solid ${({ theme }) => theme.colors.borderStrong};
