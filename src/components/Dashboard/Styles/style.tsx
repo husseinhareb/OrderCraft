@@ -8,20 +8,22 @@ export const CardContainer = styled.section`
   padding: 16px;
   box-shadow: 0 4px 20px ${({ theme }) => theme.colors.softShadow};
 
-  /* Add vertical spacing between everything inside the card,
-     and ensure inner content can’t visually spill outside */
+  /* spacing inside a card */
   display: flex;
   flex-direction: column;
   gap: 12px;
   overflow: hidden;
+
+  margin-top: var(--dash-gap, 12px);
 `;
 
 export const CardTitle = styled.h3`
-  margin: 0; /* gap on CardContainer takes care of spacing */
+  margin: 0;
   font-size: 16px;
   font-weight: 600;
   color: ${({ theme }) => theme.colors.text};
 `;
+
 
 /* ===== KPI ===== */
 export const KpiStack = styled.div`
@@ -195,12 +197,30 @@ export const TwoCol = styled.div`
   gap: 12px;
 `;
 
-export const Grid = styled.div<{ $cols?: number; $gap?: number }>`
+/* ===== Misc layout/util ===== */
+export const Grid = styled.div<{ $cols?: number; $gap?: number; $rowGap?: number }>`
   display: grid;
   grid-template-columns: repeat(${({ $cols = 4 }) => $cols}, minmax(0, 1fr));
-  /* Same gap for rows and columns to ensure vertical spacing between cards */
-  gap: ${({ $gap = 12 }) => $gap}px;
+
+  /* internal spacing between cards in the same grid */
+  column-gap: ${({ $gap = 12 }) => $gap}px;
+  row-gap: ${({ $rowGap, $gap = 12 }) => ($rowGap ?? $gap)}px;
+
+  /* external spacing between stacked grids/rows */
+  margin-top: ${({ $rowGap, $gap = 12 }) => ($rowGap ?? $gap)}px;
+
+  /* optional: space after the grid as well (keeps things even if a non-grid follows) */
+  &:not(:last-child) {
+    margin-bottom: ${({ $rowGap, $gap = 12 }) => ($rowGap ?? $gap)}px;
+  }
+
+  /* cards inside the grid never add their own outer margin */
+  & > ${CardContainer} {
+    margin: 0;
+  }
 `;
+
+
 
 export const Table = styled.table`
   width: 100%;
