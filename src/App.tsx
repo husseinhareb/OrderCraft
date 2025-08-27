@@ -17,6 +17,7 @@ const MENU_ID = "left-menu";
 const HamburgerButton = styled.button`
   width: var(--hamburger-size);
   height: 32px;
+  margin: 10px;
   padding-inline: var(--hamburger-padding-inline);
   padding-block: var(--hamburger-padding-block);
   display: inline-flex;
@@ -77,7 +78,7 @@ export default function App() {
             aria-haspopup="menu"
             onClick={toggleMenu}
           >
-            <FontAwesomeIcon icon={faBars} style={{ fontSize: 24, margin: 0 }} />
+            <FontAwesomeIcon icon={faBars} style={{ fontSize: 28}} />
           </HamburgerButton>
         </aside>
 

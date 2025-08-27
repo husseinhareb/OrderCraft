@@ -51,7 +51,7 @@ const Dashboard: FC = () => {
   );
 
   return (
-    <div>
+    <div style={{"margin" : "10px"}}>
       <Header onClose={closeDashboard} />
 
       {loading && (

@@ -6,7 +6,7 @@ html, body, #root { height: 100%; width: 100%; }
 
 :root{
   --rail-width: 48px;
-  --rail-border-width: 3px;
+  --rail-border-width: 2px;
   /* rail border color is provided by GlobalStyle on .app-container:
      --rail-border-color: theme.colors.borderStrong */
   --hamburger-size: 40px;
