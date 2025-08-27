@@ -1,6 +1,6 @@
 // src/components/Dashboard/ui.tsx
 import type { FC, PropsWithChildren } from "react";
-import React, { useMemo } from "react";
+import React, { useMemo, useRef, useEffect, useState } from "react";
 import {
     CardContainer,
     CardTitle,
@@ -82,23 +82,47 @@ export const MiniLine: FC<{ data: { x: string; y: number }[]; height?: number }>
 export const MiniBars: FC<{
   data: { label: string; value: number }[];
   height?: number;
-  /** enable horizontal scroll with fixed px columns */
+  /** allow horizontal scroll when needed (will auto-fit if it can) */
   scroll?: boolean;
-  /** pixel width per column when scroll is true (default 28) */
+  /** pixel width per column when scroll kicks in */
   minColPx?: number;
 }> = ({ data, height = 120, scroll = false, minColPx = 28 }) => {
   if (!data.length) return <BarsGrid $cols={0} $gap={8} $height={height} />;
 
-  const max = Math.max(...data.map((d) => d.value), 1);
+  const gap = 8;
   const nf = useMemo(() => new Intl.NumberFormat(), []);
+  const max = Math.max(...data.map((d) => d.value), 1);
+
+  // When scroll=true, decide at runtime if we actually need to scroll or can fit the bars
+  const outerRef = useRef<HTMLDivElement>(null);
+  const [fits, setFits] = useState(true); // default: stretch to width
+
+  useEffect(() => {
+    if (!scroll) return;
+    const el = outerRef.current;
+    if (!el) return;
+
+    const compute = () => {
+      const container = el.clientWidth || 0;
+      const desired = data.length * minColPx + gap * Math.max(0, data.length - 1);
+      setFits(desired <= container);
+    };
+
+    compute();
+    const ro = new ResizeObserver(compute);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [scroll, data.length, minColPx]);
 
   const Grid = (
     <BarsGrid
       $cols={data.length}
-      $gap={8}
+      $gap={gap}
       $height={height}
+      /* If we don't fit, use fixed px columns and natural width to enable smooth horizontal scroll.
+         If we fit (or scroll=false), let CSS grid stretch columns to fill available space. */
       style={
-        scroll
+        scroll && !fits
           ? {
               width: "max-content",
               gridTemplateColumns: `repeat(${data.length}, ${minColPx}px)`,
@@ -115,11 +139,19 @@ export const MiniBars: FC<{
     </BarsGrid>
   );
 
-  return scroll ? (
-    <ScrollX style={{ justifyContent: "flex-start" }}>{Grid}</ScrollX>
-  ) : (
-    Grid
-  );
+  if (scroll) {
+    return (
+      <ScrollX
+        ref={outerRef}
+        /* align left when scrolling; when it fits, BarsGrid is 100% width so it fills nicely */
+        style={{ justifyContent: fits ? "stretch" as const : "flex-start" }}
+      >
+        {Grid}
+      </ScrollX>
+    );
+  }
+
+  return Grid;
 };
 
 /* ========== Heatmap ========== */

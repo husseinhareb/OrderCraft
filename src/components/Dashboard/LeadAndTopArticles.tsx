@@ -1,4 +1,3 @@
-// src/components/Dashboard/LeadAndTopArticles.tsx
 import type { FC } from "react";
 import { Card, MiniBars } from "./ui";
 import type { NameCount } from "./types";
@@ -14,14 +13,18 @@ const LeadAndTopArticles: FC<{
       <MiniBars
         data={leadBins.map((b) => ({ label: String(b.leadDays), value: b.count }))}
         height={140}
-        scroll                    // ✅ enables horizontal scrolling
-        minColPx={28}             // tweak if you want wider bars/labels
+        scroll
+        minColPx={28}
       />
     </Card>
+
     <Card title="Top articles">
+      {/* Enable horizontal scroll so many categories never overflow */}
       <MiniBars
         data={(topArticles ?? []).map((a) => ({ label: a.name, value: a.count }))}
         height={140}
+        scroll
+        minColPx={32}
       />
       <FinePrint>
         City leader: <strong>{topCity?.name ?? "—"}</strong>
