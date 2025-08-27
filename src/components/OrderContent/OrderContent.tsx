@@ -1,4 +1,4 @@
-// /src/components/RightPanel/OrderContent.tsx (or wherever this file lives)
+// /src/components/RightPanel/OrderContent.tsx
 import { useEffect, useMemo, useState, useCallback, type FC } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
@@ -38,7 +38,6 @@ type OrderDetail = {
 
 const formatDate = (isoLike: string) => {
   if (!isoLike) return "";
-  // Accept yyyy-mm-dd
   const dt = new Date(isoLike);
   if (Number.isNaN(dt.getTime())) return isoLike;
   return new Intl.DateTimeFormat(undefined, {
@@ -52,18 +51,27 @@ const copy = async (text: string) => {
   try {
     await navigator.clipboard?.writeText(text);
   } catch {
-    // ignore if clipboard unavailable
+    /* ignore if clipboard unavailable */
   }
 };
 
 const OrderContent: FC = () => {
-  const { opened, openOrderFormForEdit, deleteOrder, setOrderDone, closeFromStack } = useStore();
+  const {
+    opened,
+    activeOrderId,            // may not exist on older store; handled below
+    openOrderFormForEdit,
+    deleteOrder,
+    setOrderDone,
+    closeFromStack,
+  } = useStore();
+
   const storeTheme = useStore((s) => s.theme); // "light" | "dark" | "custom"
 
-  const activeId = useMemo(() => {
-    if (!opened.length) return null;
-    return opened[opened.length - 1]?.orderId ?? null; // last opened is “active”
-  }, [opened]);
+  // Prefer explicit active id from the store; otherwise fall back to last opened
+  const activeId = useMemo<number | null>(() => {
+    if (typeof activeOrderId === "number") return activeOrderId;
+    return opened.length ? opened[opened.length - 1].orderId : null;
+  }, [activeOrderId, opened]);
 
   const [data, setData] = useState<OrderDetail | null>(null);
   const [loading, setLoading] = useState(false);
@@ -85,15 +93,16 @@ const OrderContent: FC = () => {
     } catch {
       /* ignore */
     }
-    // Fallback if invoke fails or returns nothing
     setConfettiPalette(storeTheme === "dark" ? ["#ffffff"] : ["#000000"]);
   }, [storeTheme]);
 
+  // Load order whenever the active id changes
   useEffect(() => {
     let cancelled = false;
     const load = async () => {
       if (activeId == null) {
         setData(null);
+        setErr(null);
         return;
       }
       setLoading(true);
@@ -158,7 +167,7 @@ const OrderContent: FC = () => {
         colors: confettiPalette && confettiPalette.length > 0 ? confettiPalette : ["#000000"],
       });
     } catch {
-      // ignore if confetti fails to load
+      /* ignore if confetti fails to load */
     }
   }, [confettiPalette]);
 
@@ -172,11 +181,7 @@ const OrderContent: FC = () => {
     setToggling(true);
     try {
       await setOrderDone(data.id, next);
-      // Fire confetti only when marking as done
       if (next) await triggerConfetti();
-      // Optionally re-fetch to stay perfectly in sync with backend:
-      // const fresh = await invoke<OrderDetail>("get_order", { id: data.id });
-      // setData(fresh);
     } catch (e) {
       // Roll back on failure
       setData((d) => (d ? { ...d, done: current } : d));

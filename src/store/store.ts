@@ -62,7 +62,7 @@ type AppState = {
 
   /* Orders */
   orders: OrderListItem[];
-  loading: boolean; // for orders list
+  loading: boolean;
   error: string | null;
   fetchOrders: () => Promise<void>;
   deleteOrder: (id: number) => Promise<void>;
@@ -72,6 +72,10 @@ type AppState = {
   opened: OpenedOrder[];
   openedLoading: boolean;
   openedError: string | null;
+
+  activeOrderId: number | null;           // <-- NEW
+  setActiveOrderId: (id: number) => void; // <-- NEW
+
   fetchOpened: () => Promise<void>;
   openInStack: (id: number) => Promise<void>; // append if missing; do NOT reorder
   closeFromStack: (id: number) => Promise<void>;
@@ -176,10 +180,7 @@ export const useStore = create<AppState>((set, get) => ({
       const data = await invoke<OrderListItem[]>("list_orders");
       set({ orders: data, loading: false });
     } catch (e: any) {
-      set({
-        error: e?.toString?.() ?? "Failed to load orders",
-        loading: false,
-      });
+      set({ error: e?.toString?.() ?? "Failed to load orders", loading: false });
     }
   },
 
@@ -187,11 +188,19 @@ export const useStore = create<AppState>((set, get) => ({
     set({ error: null });
     try {
       await invoke("delete_order", { id });
-      // remove from local orders + opened stack (DB cascades, but mirror in memory)
-      set((s) => ({
-        orders: s.orders.filter((o) => o.id !== id),
-        opened: s.opened.filter((oo) => oo.orderId !== id),
-      }));
+      // mirror local state: remove from orders and opened; adjust active if needed
+      set((s) => {
+        const opened = s.opened.filter((oo) => oo.orderId !== id);
+        const activeGone = s.activeOrderId === id;
+        const nextActive = activeGone
+          ? (opened.length ? opened[opened.length - 1].orderId : null)
+          : s.activeOrderId;
+        return {
+          orders: s.orders.filter((o) => o.id !== id),
+          opened,
+          activeOrderId: nextActive,
+        };
+      });
     } catch (e: any) {
       set({ error: e?.toString?.() ?? "Failed to delete order" });
     }
@@ -218,11 +227,28 @@ export const useStore = create<AppState>((set, get) => ({
   openedLoading: false,
   openedError: null,
 
+  activeOrderId: null,
+  setActiveOrderId: (id: number) =>
+    set({
+      activeOrderId: id,
+      showDashboard: false,
+      showSettings: false,
+    }),
+
   fetchOpened: async () => {
     set({ openedLoading: true, openedError: null });
     try {
       const data = await invoke<OpenedOrder[]>("get_opened_orders");
-      set({ opened: data, openedLoading: false });
+      set((s) => {
+        const ids = data.map((d) => d.orderId);
+        const active =
+          s.activeOrderId != null && ids.includes(s.activeOrderId)
+            ? s.activeOrderId
+            : ids.length
+            ? ids[ids.length - 1]
+            : null;
+        return { opened: data, openedLoading: false, activeOrderId: active };
+      });
     } catch (e: any) {
       set({
         openedError: e?.toString?.() ?? "Failed to load opened orders",
@@ -232,29 +258,23 @@ export const useStore = create<AppState>((set, get) => ({
   },
 
   openInStack: async (id: number) => {
-    // Append-only optimistic update: if already present, do nothing (no reorder)
+    // Append-only optimistic update; still switch focus every time
     set((s) => {
       const exists = s.opened.some((x) => x.orderId === id);
       if (exists) {
         return {
+          activeOrderId: id,
           showDashboard: false,
           showSettings: false,
         };
       }
-
       const nextPos =
-        s.opened.length === 0
-          ? 1
-          : Math.max(...s.opened.map((x) => x.position)) + 1;
-
+        s.opened.length === 0 ? 1 : Math.max(...s.opened.map((x) => x.position)) + 1;
       const articleName =
         s.orders.find((o) => o.id === id)?.articleName ?? String(id);
-
       return {
-        opened: [
-          ...s.opened,
-          { orderId: id, articleName, position: nextPos },
-        ],
+        opened: [...s.opened, { orderId: id, articleName, position: nextPos }],
+        activeOrderId: id,
         showDashboard: false,
         showSettings: false,
       };
@@ -262,8 +282,7 @@ export const useStore = create<AppState>((set, get) => ({
 
     try {
       await invoke("open_order", { id });
-      // sync from DB (which also appends); keeps positions canonical
-      await get().fetchOpened();
+      await get().fetchOpened(); // keep positions canonical
     } catch (e: any) {
       set({ openedError: e?.toString?.() ?? "Failed to open order" });
       await get().fetchOpened();
@@ -271,8 +290,17 @@ export const useStore = create<AppState>((set, get) => ({
   },
 
   closeFromStack: async (id: number) => {
-    // Optimistic remove
-    set((s) => ({ opened: s.opened.filter((x) => x.orderId !== id) }));
+    // Optimistic remove + fix active if we removed the current one
+    set((s) => {
+      const opened = s.opened.filter((x) => x.orderId !== id);
+      const nextActive =
+        s.activeOrderId === id
+          ? opened.length
+            ? opened[opened.length - 1].orderId
+            : null
+          : s.activeOrderId;
+      return { opened, activeOrderId: nextActive };
+    });
     try {
       await invoke("remove_opened_order", { id });
       await get().fetchOpened();
