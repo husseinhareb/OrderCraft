@@ -1,3 +1,4 @@
+// /src/components/OpenedOrders/OpenedOrders.tsx
 import { useEffect, useRef, type FC } from "react";
 import { useStore } from "../../store/store";
 import {
@@ -9,6 +10,7 @@ import {
 
 const OpenedOrders: FC = () => {
   const { opened, fetchOpened, closeFromStack, closeOrderForm } = useStore();
+  const activeOrderId = useStore((s) => s.activeOrderId);
   const listRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -57,26 +59,31 @@ const OpenedOrders: FC = () => {
   return (
     <OpenedBar aria-label="Opened orders">
       <OpenedList ref={listRef} onWheel={onWheel}>
-        {opened.map((o) => (
-          <OpenedChip
-            key={o.orderId}
-            data-order-id={o.orderId}
-            title={o.articleName}
-            onClick={() => openContent(o.orderId)}
-          >
-            <span className="title">{o.articleName}</span>
-            <CloseChipBtn
-              type="button"
-              aria-label={`Close ${o.articleName}`}
-              onClick={(e) => {
-                e.stopPropagation();
-                closeFromStack(o.orderId);
-              }}
+        {opened.map((o) => {
+          const isActive = o.orderId === activeOrderId;
+          return (
+            <OpenedChip
+              key={o.orderId}
+              data-order-id={o.orderId}
+              data-active={isActive ? "true" : undefined}
+              aria-current={isActive ? "page" : undefined}
+              title={o.articleName}
+              onClick={() => openContent(o.orderId)}
             >
-              ✕
-            </CloseChipBtn>
-          </OpenedChip>
-        ))}
+              <span className="title">{o.articleName}</span>
+              <CloseChipBtn
+                type="button"
+                aria-label={`Close ${o.articleName}`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  closeFromStack(o.orderId);
+                }}
+              >
+                ✕
+              </CloseChipBtn>
+            </OpenedChip>
+          );
+        })}
       </OpenedList>
     </OpenedBar>
   );

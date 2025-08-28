@@ -1,3 +1,4 @@
+// /src/components/OpenedOrders/Styles/style.tsx
 import { styled } from "styled-components";
 
 export const OpenedBar = styled.div`
@@ -42,6 +43,7 @@ export const OpenedChip = styled.button`
   gap: 8px;
   padding: 6px 10px;
   border: 1px solid ${({ theme }) => theme.colors.borderStrong};
+  border-bottom: 0; /* hide bottom border by default */
   background: ${({ theme }) => theme.colors.surface};
   color: ${({ theme }) => theme.colors.text};
   cursor: pointer;
@@ -57,11 +59,22 @@ export const OpenedChip = styled.button`
     z-index: 1;
   }
 
+  &:focus-visible {
+    outline: 2px solid ${({ theme }) => theme.colors.primary};
+    outline-offset: 2px;
+    border-radius: 6px;
+  }
+
   .title {
     max-width: 180px;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+  }
+
+  /* Only the active chip shows a bottom border */
+  &[data-active="true"] {
+    border-bottom: 2px solid ${({ theme }) => theme.colors.primary};
   }
 `;
 
