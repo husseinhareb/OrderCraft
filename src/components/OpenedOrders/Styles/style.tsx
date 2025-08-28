@@ -26,18 +26,16 @@ export const OpenedList = styled.div`
   overscroll-behavior-x: contain;
 
   /* hide scrollbars, keep scrolling with wheel/trackpad */
-  scrollbar-width: none;         
-  -ms-overflow-style: none;      
-  &::-webkit-scrollbar {         
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  &::-webkit-scrollbar {
     width: 0;
     height: 0;
   }
 `;
 
-
-
 export const OpenedChip = styled.button`
-  flex: 0 1 auto;             /* allow shrinking but keep in one row */
+  flex: 0 1 auto; /* allow shrinking but keep in one row */
   display: inline-flex;
   align-items: center;
   height: 100%;
@@ -50,7 +48,9 @@ export const OpenedChip = styled.button`
   position: relative;
 
   /* collapse adjoining borders */
-  & + & { margin-left: -1px; }
+  & + & {
+    margin-left: -1px;
+  }
 
   &:hover {
     background: ${({ theme }) => theme.colors.hover};

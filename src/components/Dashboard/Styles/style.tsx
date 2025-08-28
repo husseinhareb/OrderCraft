@@ -24,7 +24,6 @@ export const CardTitle = styled.h3`
   color: ${({ theme }) => theme.colors.text};
 `;
 
-
 /* ===== KPI ===== */
 export const KpiStack = styled.div`
   display: flex;
@@ -71,7 +70,11 @@ export const Dot = styled.circle.attrs({ r: 2.5 })`
 `;
 
 /* ===== MiniBars ===== */
-export const BarsGrid = styled.div<{ $cols: number; $gap: number; $height: number }>`
+export const BarsGrid = styled.div<{
+  $cols: number;
+  $gap: number;
+  $height: number;
+}>`
   display: grid;
   /* Let columns shrink properly inside containers and never exceed width */
   grid-template-columns: repeat(${({ $cols }) => $cols}, minmax(0, 1fr));
@@ -158,18 +161,25 @@ export const HeatmapGrid = styled.div<{ $cell: number; $gap: number }>`
   gap: ${({ $gap }) => $gap}px;
 `;
 
-const clamp01 = (n: number) => Math.max(0, Math.min(1, Number.isFinite(n) ? n : 0));
+const clamp01 = (n: number) =>
+  Math.max(0, Math.min(1, Number.isFinite(n) ? n : 0));
 const withAlpha = (color: string, alpha: number) => {
   const a = clamp01(alpha);
   if (color.startsWith("#")) {
     let hex = color.slice(1);
-    if (hex.length === 3 || hex.length === 4) hex = hex.split("").map((c) => c + c).join("");
+    if (hex.length === 3 || hex.length === 4)
+      hex = hex
+        .split("")
+        .map((c) => c + c)
+        .join("");
     const r = parseInt(hex.slice(0, 2), 16);
     const g = parseInt(hex.slice(2, 4), 16);
     const b = parseInt(hex.slice(4, 6), 16);
     return `rgba(${r}, ${g}, ${b}, ${a})`;
   }
-  const m = color.match(/rgba?\(([\d.]+)[,\s]+([\d.]+)[,\s]+([\d.]+)(?:[,\s/]+([\d.]+))?\)/i);
+  const m = color.match(
+    /rgba?\(([\d.]+)[,\s]+([\d.]+)[,\s]+([\d.]+)(?:[,\s/]+([\d.]+))?\)/i
+  );
   if (m) {
     const [, r, g, b, baseA] = m;
     const ba = baseA ? clamp01(parseFloat(baseA)) : 1;
@@ -183,7 +193,8 @@ export const HeatmapCell = styled.div<{ $alpha: number; $cell: number }>`
   width: ${({ $cell }) => $cell}px;
   height: ${({ $cell }) => $cell}px;
   border-radius: 4px;
-  background: ${({ theme, $alpha }) => withAlpha(theme.colors.text, Math.min(0.9, Math.max(0, $alpha)))};
+  background: ${({ theme, $alpha }) =>
+    withAlpha(theme.colors.text, Math.min(0.9, Math.max(0, $alpha)))};
 `;
 
 export const HeatmapZeroCell = styled(HeatmapCell)`
@@ -198,20 +209,21 @@ export const TwoCol = styled.div`
 `;
 
 /* ===== Misc layout/util ===== */
-export const Grid = styled.div<{ $cols?: number; $gap?: number; $rowGap?: number }>`
+export const Grid = styled.div<{
+  $cols?: number;
+  $gap?: number;
+  $rowGap?: number;
+}>`
   display: grid;
   grid-template-columns: repeat(${({ $cols = 4 }) => $cols}, minmax(0, 1fr));
 
-  /* internal spacing between cards in the same grid */
   column-gap: ${({ $gap = 12 }) => $gap}px;
-  row-gap: ${({ $rowGap, $gap = 12 }) => ($rowGap ?? $gap)}px;
+  row-gap: ${({ $rowGap, $gap = 12 }) => $rowGap ?? $gap}px;
 
-  /* external spacing between stacked grids/rows */
-  margin-top: ${({ $rowGap, $gap = 12 }) => ($rowGap ?? $gap)}px;
+  margin-top: ${({ $rowGap, $gap = 12 }) => $rowGap ?? $gap}px;
 
-  /* optional: space after the grid as well (keeps things even if a non-grid follows) */
   &:not(:last-child) {
-    margin-bottom: ${({ $rowGap, $gap = 12 }) => ($rowGap ?? $gap)}px;
+    margin-bottom: ${({ $rowGap, $gap = 12 }) => $rowGap ?? $gap}px;
   }
 
   /* cards inside the grid never add their own outer margin */
@@ -219,8 +231,6 @@ export const Grid = styled.div<{ $cols?: number; $gap?: number; $rowGap?: number
     margin: 0;
   }
 `;
-
-
 
 export const Table = styled.table`
   width: 100%;
@@ -245,7 +255,9 @@ export const TrMuted = styled.tr`
   background: ${({ theme }) => theme.colors.subtleBg};
 `;
 
-export const Badge = styled.span<{ $tone?: "neutral" | "success" | "warning" | "danger" }>`
+export const Badge = styled.span<{
+  $tone?: "neutral" | "success" | "warning" | "danger";
+}>`
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -288,7 +300,11 @@ export const FinePrint = styled.div`
   margin-top: 8px;
 `;
 
-export const FlexRow = styled.div<{ $gap?: number; $align?: string; $justify?: string }>`
+export const FlexRow = styled.div<{
+  $gap?: number;
+  $align?: string;
+  $justify?: string;
+}>`
   display: flex;
   gap: ${({ $gap = 8 }) => $gap}px;
   align-items: ${({ $align = "center" }) => $align};

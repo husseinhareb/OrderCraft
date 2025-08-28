@@ -10,7 +10,8 @@ export const Container = styled.div<{ $open: boolean }>`
   background: ${({ theme }) => theme.colors.surface};
   transform: translateX(${(p) => (p.$open ? "0" : "-100%")});
   z-index: 1000;
-  border-right: ${(p) => (p.$open ? `2px solid ${p.theme.colors.borderStrong}` : "0")};
+  border-right: ${(p) =>
+    p.$open ? `2px solid ${p.theme.colors.borderStrong}` : "0"};
 
   /* use a CSS var for padding so other elements can compensate it */
   padding: ${(p) => (p.$open ? "var(--left-panel-padding, 16px)" : "0")};
@@ -73,7 +74,6 @@ export const OrdersList = styled.ul`
   -webkit-overflow-scrolling: touch;
   scrollbar-gutter: stable;
 `;
-
 
 export const OrderItem = styled.li`
   padding: 8px 10px;

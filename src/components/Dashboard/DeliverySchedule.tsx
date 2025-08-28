@@ -3,11 +3,11 @@ import type { FC } from "react";
 import { Card } from "./ui";
 import type { ScheduleItem } from "./types";
 import { fmt } from "./utils";
-import { Muted, ScrollX, TD, TH, Table} from "./Styles/style";
+import { Muted, ScrollX, TD, TH, Table } from "./Styles/style";
 
 const DeliverySchedule: FC<{ schedule: ScheduleItem[] }> = ({ schedule }) => (
   <Card title="Delivery schedule (open, next 12 weeks)">
-    {(schedule?.length ?? 0) ? (
+    {schedule?.length ?? 0 ? (
       <ScrollX>
         <Table>
           <thead>

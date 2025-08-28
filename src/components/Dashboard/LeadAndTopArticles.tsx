@@ -11,7 +11,10 @@ const LeadAndTopArticles: FC<{
   <Grid $cols={2} $gap={12}>
     <Card title="Planned lead time distribution (days)">
       <MiniBars
-        data={leadBins.map((b) => ({ label: String(b.leadDays), value: b.count }))}
+        data={leadBins.map((b) => ({
+          label: String(b.leadDays),
+          value: b.count,
+        }))}
         height={140}
         scroll
         minColPx={28}
@@ -21,7 +24,10 @@ const LeadAndTopArticles: FC<{
     <Card title="Top articles">
       {/* Enable horizontal scroll so many categories never overflow */}
       <MiniBars
-        data={(topArticles ?? []).map((a) => ({ label: a.name, value: a.count }))}
+        data={(topArticles ?? []).map((a) => ({
+          label: a.name,
+          value: a.count,
+        }))}
         height={140}
         scroll
         minColPx={32}

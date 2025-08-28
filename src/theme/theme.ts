@@ -24,10 +24,21 @@ export type ThemeColors = {
 
 /** A list to render inputs in Settings and to validate */
 export const THEME_KEYS: Array<keyof ThemeColors> = [
-  "bg","surface","text","textMuted",
-  "borderStrong","border","line","lineFaint",
-  "overlay","hover","softShadow",
-  "primary","danger","warning","success",
+  "bg",
+  "surface",
+  "text",
+  "textMuted",
+  "borderStrong",
+  "border",
+  "line",
+  "lineFaint",
+  "overlay",
+  "hover",
+  "softShadow",
+  "primary",
+  "danger",
+  "warning",
+  "success",
   "subtleBg",
 ];
 

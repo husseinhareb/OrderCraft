@@ -77,8 +77,9 @@ function isHexColor(v: string): boolean {
 
 // ---------- Component ----------
 const Settings: FC = () => {
-  const [activeTab, setActiveTab] =
-    useState<"general" | "theme" | "companies">("general");
+  const [activeTab, setActiveTab] = useState<"general" | "theme" | "companies">(
+    "general"
+  );
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -203,7 +204,7 @@ const Settings: FC = () => {
         // For light/dark themes, we still save current tokens/palette (preconfig), but app will ignore palette unless themeChoice === "custom".
         base:
           themeChoice === "custom"
-            ? (customTheme?.base ?? "light")
+            ? customTheme?.base ?? "light"
             : (themeChoice as "light" | "dark"),
         colors: (customTheme?.colors ?? {}) as Record<string, string>,
         confettiColors: normalizeConfettiColors(confettiColors)
@@ -447,13 +448,17 @@ const Settings: FC = () => {
                               id={`color-${k}`}
                               type="color"
                               value={isHexColor(val) ? val : "#000000"}
-                              onChange={(e) => updateCustomColor(k, e.target.value)}
+                              onChange={(e) =>
+                                updateCustomColor(k, e.target.value)
+                              }
                               aria-label={`${k} (color picker)`}
                               style={{ width: 48, padding: 0, height: 36 }}
                             />
                             <Input
                               value={val}
-                              onChange={(e) => updateCustomColor(k, e.target.value)}
+                              onChange={(e) =>
+                                updateCustomColor(k, e.target.value)
+                              }
                               placeholder="#000000"
                               aria-label={`${k} hex value`}
                             />
@@ -462,7 +467,9 @@ const Settings: FC = () => {
                           <Input
                             id={`color-${k}`}
                             value={val}
-                            onChange={(e) => updateCustomColor(k, e.target.value)}
+                            onChange={(e) =>
+                              updateCustomColor(k, e.target.value)
+                            }
                             placeholder={
                               k === "softShadow"
                                 ? "rgba(0,0,0,0.06)"
@@ -499,7 +506,7 @@ const Settings: FC = () => {
                     // This mirrors the real runtime behavior when DB deduped your palette.
                     const displayedHex = isHexColor(c)
                       ? c
-                      : (firstValid ?? "#000000"); // still fall back to black if none set yet
+                      : firstValid ?? "#000000"; // still fall back to black if none set yet
 
                     return (
                       <Field key={`confetti-${i}`} style={{ maxWidth: "none" }}>
@@ -509,20 +516,24 @@ const Settings: FC = () => {
                             id={`confetti-${i}`}
                             type="color"
                             value={displayedHex}
-                            onChange={(e) => updateConfettiAt(i, e.target.value)}
+                            onChange={(e) =>
+                              updateConfettiAt(i, e.target.value)
+                            }
                             aria-label={`Confetti color ${i + 1} (picker)`}
                             style={{ width: 48, padding: 0, height: 36 }}
                             title={
                               isHexColor(c)
                                 ? c
                                 : firstValid
-                                  ? `Effective: ${firstValid} (empty slot mirrors first color)`
-                                  : `Pick a color`
+                                ? `Effective: ${firstValid} (empty slot mirrors first color)`
+                                : `Pick a color`
                             }
                           />
                           <Input
                             value={c}
-                            onChange={(e) => updateConfettiAt(i, e.target.value)}
+                            onChange={(e) =>
+                              updateConfettiAt(i, e.target.value)
+                            }
                             placeholder={firstValid ?? "#000000"}
                             aria-label={`Confetti color ${i + 1} (hex)`}
                           />

@@ -12,25 +12,29 @@ const TrendAndMix: FC<{
 }> = ({ kpis, weeklySeries, companyShare90d }) => (
   <TwoCol>
     <Card title="Orders (weekly)">
-  {weeklySeries.length >= 2 ? (
-    <MiniLine data={weeklySeries} height={120} />
-  ) : (
-    <MiniBars
-      data={weeklySeries.map(p => ({ label: p.x, value: p.y }))}
-      height={120}
-    />
-  )}
-</Card>
+      {weeklySeries.length >= 2 ? (
+        <MiniLine data={weeklySeries} height={120} />
+      ) : (
+        <MiniBars
+          data={weeklySeries.map((p) => ({ label: p.x, value: p.y }))}
+          height={120}
+        />
+      )}
+    </Card>
 
     <Card title="Top delivery company (last 90d)">
       {kpis.topDeliveryCompany ? (
         <div>
-          <div >
-            <strong>{kpis.topDeliveryCompany.name}</strong> — {fmt.format(kpis.topDeliveryCompany.count)} (
+          <div>
+            <strong>{kpis.topDeliveryCompany.name}</strong> —{" "}
+            {fmt.format(kpis.topDeliveryCompany.count)} (
             {kpis.topDeliveryCompany.sharePct.toFixed(1)}%)
           </div>
           <MiniBars
-            data={(companyShare90d ?? []).map((c) => ({ label: c.name, value: c.count }))}
+            data={(companyShare90d ?? []).map((c) => ({
+              label: c.name,
+              value: c.count,
+            }))}
             height={140}
           />
         </div>

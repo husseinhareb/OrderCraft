@@ -41,15 +41,23 @@ const Dashboard: FC = () => {
   }, [fetchData]);
 
   const weeklySeries = useMemo(
-    () => (data?.ordersOverTimeWeekly ?? []).map((d) => ({ x: d.period, y: d.count })),
+    () =>
+      (data?.ordersOverTimeWeekly ?? []).map((d) => ({
+        x: d.period,
+        y: d.count,
+      })),
     [data]
   );
 
-  const leadBins = useMemo(() => normalizeLeadBins(data?.leadTimeHistogram), [data]);
+  const leadBins = useMemo(
+    () => normalizeLeadBins(data?.leadTimeHistogram),
+    [data]
+  );
 
   // lifetime company share (falls back safely if backend hasn't exposed it yet)
   const companyShareLifetime: NameCount[] = useMemo(() => {
-    const raw = (data as any)?.companyShareLifetime ?? data?.companyShare90d ?? [];
+    const raw =
+      (data as any)?.companyShareLifetime ?? data?.companyShare90d ?? [];
     return Array.isArray(raw) ? (raw as NameCount[]) : [];
   }, [data]);
 
@@ -113,7 +121,10 @@ const Dashboard: FC = () => {
           <Grid $cols={1} $gap={12}>
             <Card title="Planned lead time distribution (days)">
               <MiniBars
-                data={leadBins.map((b) => ({ label: String(b.leadDays), value: b.count }))}
+                data={leadBins.map((b) => ({
+                  label: String(b.leadDays),
+                  value: b.count,
+                }))}
                 height={140}
                 scroll
                 minColPx={28}

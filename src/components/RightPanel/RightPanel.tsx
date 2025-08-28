@@ -17,7 +17,9 @@ const RightPanel: FC = () => {
       {showDashboard ? (
         <Dashboard />
       ) : showSettings ? (
-        <Suspense fallback={<div style={{ padding: 12 }}>Loading settings…</div>}>
+        <Suspense
+          fallback={<div style={{ padding: 12 }}>Loading settings…</div>}
+        >
           <Settings />
         </Suspense>
       ) : (

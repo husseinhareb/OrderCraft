@@ -6,7 +6,12 @@ export const days = (n: number | null | undefined) =>
   n == null ? "—" : `${Math.round(n)}d`;
 
 export function normalizeLeadBins(
-  bins?: ({ leadDays: number; count: number } | { lead_days: number; count: number })[] | null
+  bins?:
+    | (
+        | { leadDays: number; count: number }
+        | { lead_days: number; count: number }
+      )[]
+    | null
 ) {
   if (!Array.isArray(bins)) return [];
   return bins

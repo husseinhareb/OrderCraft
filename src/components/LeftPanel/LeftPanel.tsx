@@ -74,8 +74,7 @@ const LeftPanel: FC<LeftPanelProps> = ({ open, onClose }) => {
     (async () => {
       await fetchPalette();
     })();
-    return () => {
-    };
+    return () => {};
   }, [storeTheme, fetchPalette]);
 
   // also refresh palette when backend announces a theme/confetti update
@@ -102,7 +101,10 @@ const LeftPanel: FC<LeftPanelProps> = ({ open, onClose }) => {
     const root = document.documentElement;
     const openWidth = "min(360px, 80vw)";
     const closedWidth = "var(--left-closed-width, 0px)";
-    root.style.setProperty("--left-panel-width", open ? openWidth : closedWidth);
+    root.style.setProperty(
+      "--left-panel-width",
+      open ? openWidth : closedWidth
+    );
     return () => {
       root.style.setProperty("--left-panel-width", closedWidth);
     };
@@ -131,7 +133,6 @@ const LeftPanel: FC<LeftPanelProps> = ({ open, onClose }) => {
     },
     [closeOrderForm]
   );
-
 
   const handleDelete = useCallback(
     async (id: number) => {
@@ -204,7 +205,12 @@ const LeftPanel: FC<LeftPanelProps> = ({ open, onClose }) => {
 
   return (
     <>
-      <Container id="left-menu" className="left-panel" $open={open} aria-expanded={open}>
+      <Container
+        id="left-menu"
+        className="left-panel"
+        $open={open}
+        aria-expanded={open}
+      >
         {/* Header buttons */}
         <ChartButton
           type="button"
@@ -231,14 +237,20 @@ const LeftPanel: FC<LeftPanelProps> = ({ open, onClose }) => {
             <li>
               <ErrorMsg role="alert">{error}</ErrorMsg>
               <div style={{ padding: "0.5rem 1rem" }}>
-                <IconButton type="button" onClick={fetchOrders} aria-label="Retry loading orders">
+                <IconButton
+                  type="button"
+                  onClick={fetchOrders}
+                  aria-label="Retry loading orders"
+                >
                   Retry
                 </IconButton>
               </div>
             </li>
           )}
 
-          {!loading && !error && orders.length === 0 && <EmptyMsg>No orders yet</EmptyMsg>}
+          {!loading && !error && orders.length === 0 && (
+            <EmptyMsg>No orders yet</EmptyMsg>
+          )}
 
           {!loading &&
             !error &&
@@ -260,12 +272,28 @@ const LeftPanel: FC<LeftPanelProps> = ({ open, onClose }) => {
                       <CheckOrder
                         id={cid}
                         checked={o.done}
-                        onChange={(e) => handleDoneToggle(o.id, e.target.checked)}
-                        aria-label={o.done ? "Mark as not done" : "Mark as done"}
+                        onChange={(e) =>
+                          handleDoneToggle(o.id, e.target.checked)
+                        }
+                        aria-label={
+                          o.done ? "Mark as not done" : "Mark as done"
+                        }
                       />
                       <CheckLabel htmlFor={cid}>
-                        <svg width="43" height="43" viewBox="0 0 90 90" aria-hidden="true">
-                          <rect x="30" y="20" width="50" height="50" stroke="black" fill="none" />
+                        <svg
+                          width="43"
+                          height="43"
+                          viewBox="0 0 90 90"
+                          aria-hidden="true"
+                        >
+                          <rect
+                            x="30"
+                            y="20"
+                            width="50"
+                            height="50"
+                            stroke="black"
+                            fill="none"
+                          />
                           <g transform="translate(0,-952.36218)">
                             <path
                               d="m 13,983 c 33,6 40,26 55,48 "
@@ -292,7 +320,8 @@ const LeftPanel: FC<LeftPanelProps> = ({ open, onClose }) => {
                       <IconButton
                         type="button"
                         onClick={() => {
-                          const { closeDashboard, closeSettings } = useStore.getState();
+                          const { closeDashboard, closeSettings } =
+                            useStore.getState();
                           closeDashboard?.();
                           closeSettings?.();
                           openOrderFormForEdit(o.id);

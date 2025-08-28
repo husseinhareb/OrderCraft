@@ -58,7 +58,7 @@ const copy = async (text: string) => {
 const OrderContent: FC = () => {
   const {
     opened,
-    activeOrderId,            // may not exist on older store; handled below
+    activeOrderId, // may not exist on older store; handled below
     openOrderFormForEdit,
     deleteOrder,
     setOrderDone,
@@ -164,7 +164,10 @@ const OrderContent: FC = () => {
         scalar: 1.0,
         origin: { x: 0.5, y: 0.5 },
         zIndex: 1200,
-        colors: confettiPalette && confettiPalette.length > 0 ? confettiPalette : ["#000000"],
+        colors:
+          confettiPalette && confettiPalette.length > 0
+            ? confettiPalette
+            : ["#000000"],
       });
     } catch {
       /* ignore if confetti fails to load */
@@ -208,13 +211,23 @@ const OrderContent: FC = () => {
       <Wrapper>
         <Card aria-busy="true">
           <Header>
-            <Title style={{ opacity: 0.45, width: 240, height: 20, background: "#eee", borderRadius: 6 }} />
+            <Title
+              style={{
+                opacity: 0.45,
+                width: 240,
+                height: 20,
+                background: "#eee",
+                borderRadius: 6,
+              }}
+            />
           </Header>
           <MetaGrid>
             {Array.from({ length: 6 }).map((_, i) => (
               <MetaItem key={i}>
                 <MetaLabel style={{ opacity: 0.6 }}>Loading…</MetaLabel>
-                <MetaValue style={{ height: 16, background: "#f3f3f3", borderRadius: 4 }} />
+                <MetaValue
+                  style={{ height: 16, background: "#f3f3f3", borderRadius: 4 }}
+                />
               </MetaItem>
             ))}
           </MetaGrid>
@@ -257,7 +270,10 @@ const OrderContent: FC = () => {
               {done ? "✓ Done" : toggling ? "Marking…" : "Mark done"}
             </ActionBtn>
 
-            <ActionBtn type="button" onClick={() => openOrderFormForEdit(data.id)}>
+            <ActionBtn
+              type="button"
+              onClick={() => openOrderFormForEdit(data.id)}
+            >
               Edit
             </ActionBtn>
 
@@ -277,7 +293,9 @@ const OrderContent: FC = () => {
         </Header>
 
         <BadgeRow>
-          {data.deliveryCompany && <Badge title="Delivery company">{data.deliveryCompany}</Badge>}
+          {data.deliveryCompany && (
+            <Badge title="Delivery company">{data.deliveryCompany}</Badge>
+          )}
           {delivDate && <Badge title="Delivery date">{delivDate}</Badge>}
           {data.city && <Badge title="City">{data.city}</Badge>}
         </BadgeRow>
@@ -294,7 +312,12 @@ const OrderContent: FC = () => {
             <MetaLabel>Phone</MetaLabel>
             <MetaValue>
               <a href={`tel:${data.phone}`}>{data.phone}</a>
-              <ActionBtn type="button" data-variant="ghost" onClick={() => copy(data.phone)} title="Copy">
+              <ActionBtn
+                type="button"
+                data-variant="ghost"
+                onClick={() => copy(data.phone)}
+                title="Copy"
+              >
                 ⧉
               </ActionBtn>
             </MetaValue>
@@ -309,7 +332,12 @@ const OrderContent: FC = () => {
             <MetaLabel>Address</MetaLabel>
             <MetaValue>
               <span>{data.address}</span>
-              <ActionBtn type="button" data-variant="ghost" onClick={() => copy(data.address)} title="Copy">
+              <ActionBtn
+                type="button"
+                data-variant="ghost"
+                onClick={() => copy(data.address)}
+                title="Copy"
+              >
                 ⧉
               </ActionBtn>
             </MetaValue>
@@ -319,7 +347,9 @@ const OrderContent: FC = () => {
             <MetaLabel>Delivery</MetaLabel>
             <MetaValue>
               <span>{data.deliveryCompany}</span>
-              {delivDate && <span style={{ opacity: 0.7 }}> · {delivDate}</span>}
+              {delivDate && (
+                <span style={{ opacity: 0.7 }}> · {delivDate}</span>
+              )}
             </MetaValue>
           </MetaItem>
 

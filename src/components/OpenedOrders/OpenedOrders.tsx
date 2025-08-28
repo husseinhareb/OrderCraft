@@ -1,6 +1,11 @@
 import { useEffect, useRef, type FC } from "react";
 import { useStore } from "../../store/store";
-import { OpenedBar, OpenedList, OpenedChip, CloseChipBtn } from "./Styles/style";
+import {
+  OpenedBar,
+  OpenedList,
+  OpenedChip,
+  CloseChipBtn,
+} from "./Styles/style";
 
 const OpenedOrders: FC = () => {
   const { opened, fetchOpened, closeFromStack, closeOrderForm } = useStore();
@@ -15,7 +20,8 @@ const OpenedOrders: FC = () => {
   const onWheel = (e: React.WheelEvent<HTMLDivElement>) => {
     const el = e.currentTarget;
     if (el.scrollWidth <= el.clientWidth) return;
-    const delta = Math.abs(e.deltaY) >= Math.abs(e.deltaX) ? e.deltaY : e.deltaX;
+    const delta =
+      Math.abs(e.deltaY) >= Math.abs(e.deltaX) ? e.deltaY : e.deltaX;
     if (delta !== 0) {
       el.scrollLeft += delta;
       e.preventDefault();
@@ -47,7 +53,6 @@ const OpenedOrders: FC = () => {
       chip?.scrollIntoView({ block: "nearest", inline: "nearest" });
     });
   };
-
 
   return (
     <OpenedBar aria-label="Opened orders">

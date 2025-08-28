@@ -5,8 +5,8 @@ import { styled } from "styled-components";
 export const Wrap = styled.div`
   display: grid;
   grid-template-columns: 220px 1fr;
-  min-height: 100vh;
-  margin: 10px;
+  min-height: 100dvh;
+  padding: 10px;
   gap: 15px;
   @media (max-width: 720px) {
     grid-template-columns: 1fr;

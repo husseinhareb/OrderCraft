@@ -2,9 +2,11 @@
 import type { FC } from "react";
 import { Card } from "./ui";
 import type { Exceptions } from "./types";
-import { Muted, ScrollX, TD, TH, Table} from "./Styles/style";
+import { Muted, ScrollX, TD, TH, Table } from "./Styles/style";
 
-const ExceptionsTable: FC<{ exceptions: Exceptions | null | undefined }> = ({ exceptions }) => {
+const ExceptionsTable: FC<{ exceptions: Exceptions | null | undefined }> = ({
+  exceptions,
+}) => {
   const rows = exceptions?.overdueTop10 ?? [];
   return (
     <Card title="Overdue (Top 10)">

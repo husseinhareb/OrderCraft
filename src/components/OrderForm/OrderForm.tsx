@@ -1,8 +1,24 @@
 // /src/components/OrderForm/OrderForm.tsx
-import { useEffect, useRef, useState, useMemo, type FC, type FormEvent } from "react";
 import {
-  Drawer, DrawerBody, DrawerFooter, DrawerHeader,
-  Field, Label, Input, Textarea, Select, Button, Overlay
+  useEffect,
+  useRef,
+  useState,
+  useMemo,
+  type FC,
+  type FormEvent,
+} from "react";
+import {
+  Drawer,
+  DrawerBody,
+  DrawerFooter,
+  DrawerHeader,
+  Field,
+  Label,
+  Input,
+  Textarea,
+  Select,
+  Button,
+  Overlay,
 } from "./Styles/style";
 import { useStore } from "../../store/store";
 import { invoke } from "@tauri-apps/api/core";
@@ -23,8 +39,14 @@ type OrderDetail = OrderInput & { id: number };
 type DeliveryCompany = { id: number; name: string; active: boolean };
 
 const blank: OrderInput = {
-  clientName: "", articleName: "", phone: "", city: "", address: "",
-  deliveryCompany: "", deliveryDate: "", description: "",
+  clientName: "",
+  articleName: "",
+  phone: "",
+  city: "",
+  address: "",
+  deliveryCompany: "",
+  deliveryDate: "",
+  description: "",
 };
 
 const OrderForm: FC = () => {
@@ -45,7 +67,9 @@ const OrderForm: FC = () => {
   const sortedCompanies = useMemo(
     () =>
       [...companies].sort((a, b) =>
-        a.active === b.active ? a.name.localeCompare(b.name) : Number(b.active) - Number(a.active)
+        a.active === b.active
+          ? a.name.localeCompare(b.name)
+          : Number(b.active) - Number(a.active)
       ),
     [companies]
   );
@@ -90,7 +114,9 @@ const OrderForm: FC = () => {
     if (isOpen && editingId != null) load(editingId);
     if (isOpen && editingId == null) setForm(blank);
 
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [isOpen, editingId]);
 
   // Load delivery companies (and default selection) when opening
@@ -105,7 +131,9 @@ const OrderForm: FC = () => {
 
         const [list, defName] = await Promise.all([
           invoke<DeliveryCompany[]>("list_delivery_companies"),
-          invoke<string | null>("get_setting", { key: "defaultDeliveryCompany" }),
+          invoke<string | null>("get_setting", {
+            key: "defaultDeliveryCompany",
+          }),
         ]);
 
         if (cancelled) return;
@@ -117,29 +145,45 @@ const OrderForm: FC = () => {
           setForm((f) => ({ ...f, deliveryCompany: defName }));
         }
       } catch (e: any) {
-        if (!cancelled) setCompaniesError(e?.toString?.() ?? "Failed to load delivery companies");
+        if (!cancelled)
+          setCompaniesError(
+            e?.toString?.() ?? "Failed to load delivery companies"
+          );
       } finally {
         if (!cancelled) setCompaniesLoading(false);
       }
     })();
 
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, editingId]);
 
-  const set = (k: keyof OrderInput) =>
-    (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
+  const set =
+    (k: keyof OrderInput) =>
+    (
+      e: React.ChangeEvent<
+        HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
+      >
+    ) =>
       setForm((f) => ({ ...f, [k]: e.target.value }));
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    setSaving(true); setError(null);
+    setSaving(true);
+    setError(null);
 
     try {
       if (editingId != null) {
-        await invoke("update_order", { id: editingId, order: { ...form, description: form.description || undefined } });
+        await invoke("update_order", {
+          id: editingId,
+          order: { ...form, description: form.description || undefined },
+        });
       } else {
-        await invoke<number>("save_order", { order: { ...form, description: form.description || undefined } });
+        await invoke<number>("save_order", {
+          order: { ...form, description: form.description || undefined },
+        });
       }
       await fetchOrders();
       close();
@@ -155,7 +199,10 @@ const OrderForm: FC = () => {
   // Drawer sizing + scroll lock
   useEffect(() => {
     const root = document.documentElement;
-    root.style.setProperty("--right-drawer-width", isOpen ? "min(420px, 95vw)" : "0px");
+    root.style.setProperty(
+      "--right-drawer-width",
+      isOpen ? "min(420px, 95vw)" : "0px"
+    );
     return () => root.style.setProperty("--right-drawer-width", "0px");
   }, [isOpen]);
 
@@ -185,12 +232,19 @@ const OrderForm: FC = () => {
   useEffect(() => {
     if (!isOpen) return;
     const q = form.articleName.trim();
-    if (articleDebounceId.current) window.clearTimeout(articleDebounceId.current);
+    if (articleDebounceId.current)
+      window.clearTimeout(articleDebounceId.current);
 
     articleDebounceId.current = window.setTimeout(async () => {
-      if (!q) { setArticleOptions([]); return; }
+      if (!q) {
+        setArticleOptions([]);
+        return;
+      }
       try {
-        const list = await invoke<string[]>("search_article_names", { query: q, limit: 8 });
+        const list = await invoke<string[]>("search_article_names", {
+          query: q,
+          limit: 8,
+        });
         setArticleOptions(list);
       } catch {
         // ignore suggestion errors silently
@@ -198,7 +252,8 @@ const OrderForm: FC = () => {
     }, 250);
 
     return () => {
-      if (articleDebounceId.current) window.clearTimeout(articleDebounceId.current);
+      if (articleDebounceId.current)
+        window.clearTimeout(articleDebounceId.current);
     };
   }, [form.articleName, isOpen]);
 
@@ -213,8 +268,15 @@ const OrderForm: FC = () => {
     let cancelled = false;
     (async () => {
       try {
-        const desc = await invoke<string | null>("get_latest_description_for_article", { name });
-        if (!cancelled && desc && (!form.description || form.description.trim() === "")) {
+        const desc = await invoke<string | null>(
+          "get_latest_description_for_article",
+          { name }
+        );
+        if (
+          !cancelled &&
+          desc &&
+          (!form.description || form.description.trim() === "")
+        ) {
           setForm((f) => ({ ...f, description: desc }));
         }
       } catch {
@@ -222,7 +284,9 @@ const OrderForm: FC = () => {
       }
     })();
 
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [form.articleName, articleOptions, isOpen]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
@@ -234,10 +298,24 @@ const OrderForm: FC = () => {
         aria-labelledby="order-drawer-title"
         aria-hidden={!isOpen}
       >
-        <form onSubmit={handleSubmit} aria-busy={saving} aria-describedby={error ? errorId : undefined}>
+        <form
+          onSubmit={handleSubmit}
+          aria-busy={saving}
+          aria-describedby={error ? errorId : undefined}
+        >
           <DrawerHeader>
-            <h3 id="order-drawer-title">{editingId ? "Edit Order" : "Create Order"}</h3>
-            <Button type="button" onClick={close} variant="ghost" aria-label="Close" disabled={saving}>✕</Button>
+            <h3 id="order-drawer-title">
+              {editingId ? "Edit Order" : "Create Order"}
+            </h3>
+            <Button
+              type="button"
+              onClick={close}
+              variant="ghost"
+              aria-label="Close"
+              disabled={saving}
+            >
+              ✕
+            </Button>
           </DrawerHeader>
 
           <DrawerBody>
@@ -326,23 +404,32 @@ const OrderForm: FC = () => {
                 required
                 autoComplete="off"
               >
-                <option value="" disabled>{companiesLoading ? "Loading…" : "Select…"}</option>
+                <option value="" disabled>
+                  {companiesLoading ? "Loading…" : "Select…"}
+                </option>
 
                 {sortedCompanies.map((c) => (
                   <option key={c.id} value={c.name}>
-                    {c.name}{c.active ? "" : " (inactive)"}
+                    {c.name}
+                    {c.active ? "" : " (inactive)"}
                   </option>
                 ))}
 
                 {/* If editing and the current company isn't in the list anymore, keep it selectable */}
                 {form.deliveryCompany &&
                   !companies.some(
-                    (c) => c.name.toLowerCase() === form.deliveryCompany.toLowerCase()
+                    (c) =>
+                      c.name.toLowerCase() ===
+                      form.deliveryCompany.toLowerCase()
                   ) && (
-                    <option value={form.deliveryCompany}>{form.deliveryCompany}</option>
+                    <option value={form.deliveryCompany}>
+                      {form.deliveryCompany}
+                    </option>
                   )}
               </Select>
-              {companiesError && <small style={{ color: "red" }}>{companiesError}</small>}
+              {companiesError && (
+                <small style={{ color: "red" }}>{companiesError}</small>
+              )}
             </Field>
 
             <Field>
@@ -370,16 +457,25 @@ const OrderForm: FC = () => {
           </DrawerBody>
 
           <DrawerFooter>
-            <Button type="button" variant="ghost" onClick={close} disabled={saving}>Cancel</Button>
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={close}
+              disabled={saving}
+            >
+              Cancel
+            </Button>
             <Button type="submit" disabled={saving}>
-              {saving ? "Saving…" : (editingId ? "Update order" : "Save order")}
+              {saving ? "Saving…" : editingId ? "Update order" : "Save order"}
             </Button>
           </DrawerFooter>
         </form>
       </Drawer>
       <Overlay
         $open={isOpen}
-        onClick={() => { if (!saving) close(); }}
+        onClick={() => {
+          if (!saving) close();
+        }}
         aria-hidden={!isOpen}
       />
     </>

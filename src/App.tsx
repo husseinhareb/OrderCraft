@@ -52,7 +52,10 @@ export default function App() {
     loadCustomTheme();
   }, [loadCustomTheme]);
 
-  const theme = useMemo(() => buildTheme(themeName, customTheme), [themeName, customTheme]);
+  const theme = useMemo(
+    () => buildTheme(themeName, customTheme),
+    [themeName, customTheme]
+  );
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -69,7 +72,10 @@ export default function App() {
       <GlobalStyle />
       <div className="app-container" data-theme={theme.name}>
         {/* Full-height rail; border hides when menu is open */}
-        <aside className={`left-rail ${menuOpen ? "is-open" : ""}`} aria-label="Primary">
+        <aside
+          className={`left-rail ${menuOpen ? "is-open" : ""}`}
+          aria-label="Primary"
+        >
           <HamburgerButton
             type="button"
             aria-label={menuOpen ? "Close menu" : "Open menu"}
@@ -78,7 +84,7 @@ export default function App() {
             aria-haspopup="menu"
             onClick={toggleMenu}
           >
-            <FontAwesomeIcon icon={faBars} style={{ fontSize: 28}} />
+            <FontAwesomeIcon icon={faBars} style={{ fontSize: 28 }} />
           </HamburgerButton>
         </aside>
 

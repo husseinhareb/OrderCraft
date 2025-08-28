@@ -3,7 +3,9 @@ export type NameCount = { name: string; count: number };
 export type TimeCount = { period: string; count: number };
 export type TimeDoneCount = { period: string; done: boolean; count: number };
 export type ScheduleItem = { week: string; company: string; count: number };
-export type LeadTimeBin = { leadDays: number; count: number } | { lead_days: number; count: number };
+export type LeadTimeBin =
+  | { leadDays: number; count: number }
+  | { lead_days: number; count: number };
 export type BucketCount = { bucket: string; count: number };
 export type HeatCell = { weekday: number; hour: number; count: number };
 

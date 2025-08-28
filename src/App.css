@@ -1,10 +1,19 @@
 /* /src/App.css */
 
 /* Reset / base */
-* { margin: 0; padding: 0; box-sizing: border-box; }
-html, body, #root { height: 100%; width: 100%; }
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+html,
+body,
+#root {
+  height: 100%;
+  width: 100%;
+}
 
-:root{
+:root {
   --rail-width: 48px;
   --rail-border-width: 2px;
   /* rail border color is provided by GlobalStyle on .app-container:
@@ -29,7 +38,8 @@ html, body, #root { height: 100%; width: 100%; }
   bottom: 0;
   width: var(--rail-width);
   /* Use themed var with a safe fallback */
-  border-right: var(--rail-border-width) solid var(--rail-border-color, currentColor);
+  border-right: var(--rail-border-width) solid
+    var(--rail-border-color, currentColor);
   display: flex;
   align-items: flex-start;
   justify-content: center;
@@ -71,10 +81,9 @@ html, body, #root { height: 100%; width: 100%; }
 /* When the left rail is open, remove the rail offset and dim the bar */
 .left-rail.is-open + .main-area {
   margin-left: 0;
-  --opened-dim-opacity: 0.65;                /* tweak to taste */
+  --opened-dim-opacity: 0.65; /* tweak to taste */
   --opened-dim-filter: saturate(0.85) brightness(0.95);
 }
-
 
 @media (min-width: 1024px) {
   /* desktop-specific tweaks if needed */

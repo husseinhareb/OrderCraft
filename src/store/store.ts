@@ -22,7 +22,8 @@ export type OpenedOrder = {
 const getInitialTheme = (): ThemeName => {
   try {
     const saved = localStorage.getItem("theme") as ThemeName | null;
-    if (saved === "light" || saved === "dark" || saved === "custom") return saved;
+    if (saved === "light" || saved === "dark" || saved === "custom")
+      return saved;
     const prefersDark =
       window.matchMedia?.("(prefers-color-scheme: dark)")?.matches ?? false;
     return prefersDark ? "dark" : "light";
@@ -73,7 +74,7 @@ type AppState = {
   openedLoading: boolean;
   openedError: string | null;
 
-  activeOrderId: number | null;           // <-- NEW
+  activeOrderId: number | null; // <-- NEW
   setActiveOrderId: (id: number) => void; // <-- NEW
 
   fetchOpened: () => Promise<void>;
@@ -180,7 +181,10 @@ export const useStore = create<AppState>((set, get) => ({
       const data = await invoke<OrderListItem[]>("list_orders");
       set({ orders: data, loading: false });
     } catch (e: any) {
-      set({ error: e?.toString?.() ?? "Failed to load orders", loading: false });
+      set({
+        error: e?.toString?.() ?? "Failed to load orders",
+        loading: false,
+      });
     }
   },
 
@@ -193,7 +197,9 @@ export const useStore = create<AppState>((set, get) => ({
         const opened = s.opened.filter((oo) => oo.orderId !== id);
         const activeGone = s.activeOrderId === id;
         const nextActive = activeGone
-          ? (opened.length ? opened[opened.length - 1].orderId : null)
+          ? opened.length
+            ? opened[opened.length - 1].orderId
+            : null
           : s.activeOrderId;
         return {
           orders: s.orders.filter((o) => o.id !== id),
@@ -269,7 +275,9 @@ export const useStore = create<AppState>((set, get) => ({
         };
       }
       const nextPos =
-        s.opened.length === 0 ? 1 : Math.max(...s.opened.map((x) => x.position)) + 1;
+        s.opened.length === 0
+          ? 1
+          : Math.max(...s.opened.map((x) => x.position)) + 1;
       const articleName =
         s.orders.find((o) => o.id === id)?.articleName ?? String(id);
       return {
