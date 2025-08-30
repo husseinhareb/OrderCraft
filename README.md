@@ -31,7 +31,29 @@ A fast, offline desktop app for managing orders, built with **Tauri (Rust + SQLi
 ---
 
 ## Screenshots
+### Order Content
+<img width="1920" height="1080" alt="2025-08-31_17-40" src="https://github.com/user-attachments/assets/c0f64e81-f4d4-483c-a644-24a30194222e" />
 
+### Left Panel
+<img width="1920" height="1080" alt="2025-08-31_17-40_1" src="https://github.com/user-attachments/assets/c7b183d0-3eba-4525-8f86-bf7f9cd0451b" />
+
+### Create Order
+<img width="1920" height="1080" alt="2025-08-31_17-40_2" src="https://github.com/user-attachments/assets/04f9bbc2-8d12-4b21-9947-878d6a8c5aa9" />
+
+### Dashboard
+<img width="1920" height="1080" alt="2025-08-31_17-40_3" src="https://github.com/user-attachments/assets/8bd24570-0f23-467a-bd98-cf6b5f11f526" />
+
+<img width="1920" height="1080" alt="2025-08-31_17-41" src="https://github.com/user-attachments/assets/c610eca1-08fa-4512-94a0-a580e705d1ad" />
+
+### Delivery Companies
+<img width="1920" height="1080" alt="2025-08-31_17-41_1" src="https://github.com/user-attachments/assets/151e0f46-a358-40fc-b32a-07a0999cd491" />
+
+### Custom Theme
+<img width="1920" height="1080" alt="2025-08-31_17-43_1" src="https://github.com/user-attachments/assets/bda2fffa-ecb0-488a-b798-9b8027fcf119" />
+<img width="1920" height="1080" alt="2025-08-31_17-43" src="https://github.com/user-attachments/assets/81c7c447-8588-4629-8366-bb4f2fa9bc9b" />
+
+### Custom Confetti
+<img width="1920" height="1080" alt="2025-08-31_17-44" src="https://github.com/user-attachments/assets/bbbc94c1-7568-4b99-abc0-4c9b85a75944" />
 
 ---
 
