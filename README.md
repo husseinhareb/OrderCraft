@@ -49,11 +49,13 @@ A fast, offline desktop app for managing orders, built with **Tauri (Rust + SQLi
 <img width="1920" height="1080" alt="2025-08-31_17-41_1" src="https://github.com/user-attachments/assets/151e0f46-a358-40fc-b32a-07a0999cd491" />
 
 ### Custom Theme
-<img width="1920" height="1080" alt="2025-08-31_17-43_1" src="https://github.com/user-attachments/assets/bda2fffa-ecb0-488a-b798-9b8027fcf119" />
-<img width="1920" height="1080" alt="2025-08-31_17-43" src="https://github.com/user-attachments/assets/81c7c447-8588-4629-8366-bb4f2fa9bc9b" />
+<img width="1920" height="1080" alt="2025-08-31_18-36" src="https://github.com/user-attachments/assets/01fd1dbe-019a-436a-a7a2-a14285789e40" />
+<img width="1920" height="1080" alt="2025-08-31_18-35" src="https://github.com/user-attachments/assets/0a4e5c9d-7b25-40d1-83e3-a544e3f26f0d" />
+
 
 ### Custom Confetti
-<img width="1920" height="1080" alt="2025-08-31_17-44" src="https://github.com/user-attachments/assets/bbbc94c1-7568-4b99-abc0-4c9b85a75944" />
+<img width="1920" height="1080" alt="2025-08-31_18-36_1" src="https://github.com/user-attachments/assets/96b245a0-da09-473d-89d5-cc7994205ca2" />
+
 
 ---
 
